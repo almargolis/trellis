@@ -10,7 +10,15 @@ def load_user(user_id):
     return User.get(user_id)
 
 def create_app(config_class=DevelopmentConfig):
-    app = Flask(__name__)
+    # Use data directory for instance path in production
+    import os
+    instance_path = os.environ.get('DATA_DIR')
+
+    if instance_path:
+        app = Flask(__name__, instance_path=instance_path)
+    else:
+        app = Flask(__name__)
+
     app.config.from_object(config_class)
 
     # Initialize extensions
