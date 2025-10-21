@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}User Management{% endblock %}
+
+{% block content %}
+<div class="user-management">
+    <div class="dashboard-header">
+        <h1>User Management</h1>
+        <a href="{{ url_for('auth.add_user') }}" class="btn btn-primary">Add New User</a>
+    </div>
+
+    <div class="users-list">
+        <table class="articles-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        {{ user.username }}
+                        {% if user.id == current_user.id %}
+                        <span class="badge badge-self">You</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ user.role }}">{{ user.role }}</span>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'active' if user.is_active else 'inactive' }}">
+                            {{ 'Active' if user.is_active else 'Inactive' }}
+                        </span>
+                    </td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</td>
+                    <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</td>
+                    <td class="actions">
+                        <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm">Edit</a>
+                        {% if user.id != current_user.id %}
+                        <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" style="display: inline;" onsubmit="return confirm('Delete user {{ user.username }}?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.user-management {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-admin {
+    background: linear-gradient(135deg, var(--accent-color), #e67e22);
+    color: white;
+}
+
+.badge-editor {
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    color: white;
+}
+
+.badge-active {
+    background: #28a745;
+    color: white;
+}
+
+.badge-inactive {
+    background: #6c757d;
+    color: white;
+}
+
+.badge-self {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130);
+}
+
+.actions {
+    white-space: nowrap;
+}
+
+.actions form {
+    margin: 0;
+}
+</style>
+{% endblock %}

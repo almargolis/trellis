@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Editor - {{ article.metadata.title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="editor-container">
+    <div class="editor-toolbar">
+        <button id="save-btn" class="btn btn-primary">Save</button>
+        <button id="download-btn" class="btn btn-secondary">Download Markdown</button>
+        <label for="upload-file" class="btn btn-secondary">Upload Markdown</label>
+        <input type="file" id="upload-file" accept=".md" style="display: none;">
+        <a href="{{ url_for('editor.dashboard') }}" class="btn btn-secondary">Back</a>
+        <span id="save-status" class="save-status"></span>
+    </div>
+
+    <div class="editor-metadata">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" value="{{ article.metadata.title }}" class="form-control">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="created-date">Created</label>
+                <input type="date" id="created-date" value="{{ article.metadata.created_date }}" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="published-date">Published</label>
+                <input type="date" id="published-date" value="{{ article.metadata.published_date }}" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="updated-date">Updated (auto)</label>
+                <input type="date" id="updated-date" value="{{ article.metadata.updated_date }}" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="tags">Tags (comma-separated)</label>
+            <input type="text" id="tags" value="{{ article.metadata.tags|join(', ') if article.metadata.tags else '' }}" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="slug">Slug</label>
+            <input type="text" id="slug" value="{{ article.slug }}" class="form-control">
+        </div>
+    </div>
+
+    <div class="editor-split">
+        <div class="editor-pane">
+            <h3>Markdown Editor</h3>
+            <textarea id="markdown-editor">{{ article.raw_content }}</textarea>
+        </div>
+
+        <div class="preview-pane">
+            <h3>Preview</h3>
+            <div id="preview-content" class="article-content">
+                {{ article.content|safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="article-filename" value="{{ article.filename }}">
+<input type="hidden" id="garden-slug" value="{{ garden.slug }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/markdown/markdown.min.js"></script>
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+{% endblock %}

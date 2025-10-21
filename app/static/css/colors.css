@@ -1,0 +1,25 @@
+:root {
+    /* Extract these from your logo - placeholders for now */
+    --primary-color: #2c5aa0;
+    --secondary-color: #4a90e2;
+    --accent-color: #f39c12;
+    --background-color: #f8f9fa;
+    --surface-color: #ffffff;
+    --text-color: #2c3e50;
+    --text-light: #7f8c8d;
+    --border-color: #e1e8ed;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.15);
+    --code-background: #282c34;
+}
+
+/* Dark mode (optional) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-color: #1a1a2e;
+        --surface-color: #16213e;
+        --text-color: #eaeaea;
+        --text-light: #94a3b8;
+        --border-color: #2d3748;
+    }
+}

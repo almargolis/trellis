@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="articles-grid">
+    {% for article in articles %}
+    <article class="article-card">
+        <h2>
+            <a href="{{ url_for('main.article', slug=article.slug) }}">
+                {{ article.metadata.title }}
+            </a>
+        </h2>
+
+        <div class="article-meta">
+            <div class="date-info">
+                <span class="date-label">Created:</span>
+                <time>{{ article.metadata.created_date }}</time>
+            </div>
+            <div class="date-info">
+                <span class="date-label">Published:</span>
+                <time>{{ article.metadata.published_date }}</time>
+            </div>
+            <div class="date-info">
+                <span class="date-label">Updated:</span>
+                <time>{{ article.metadata.updated_date }}</time>
+            </div>
+        </div>
+
+        {% if article.metadata.tags %}
+        <div class="tags">
+            {% for tag in article.metadata.tags %}
+            <span class="tag">{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="excerpt">
+            {{ article.metadata.description or article.content|striptags|truncate(200) }}
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endblock %}

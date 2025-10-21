@@ -1,0 +1,27 @@
+Content Migration Report
+================================================================================
+
+Migration Date: 2025-10-19 09:53:16
+Total Files Migrated: 17
+
+Date Mapping Details:
+--------------------------------------------------------------------------------
+File                                     Old Date     Created      Published    Updated     
+--------------------------------------------------------------------------------
+about.md                                 N/A          2025-02-14   2025-02-14   2024-11-03  
+garden/markdown.md                       N/A          2025-02-14   2025-02-14   2024-11-23  
+garden/software-tools-i-use.md           N/A          2025-02-14   2025-02-14   2024-11-03  
+garden/home_assistant.md                 N/A          2025-02-16   2025-02-16   2025-02-16  
+garden/linux_background_processes.md     N/A          2025-02-14   2025-02-14   2024-11-23  
+garden/my-first-post.md                  N/A          2025-02-14   2025-02-14   2024-11-09  
+garden/javascript_orientation.md         N/A          2025-02-14   2025-02-14   2025-01-05  
+garden/webserver.md                      N/A          2025-02-14   2025-02-14   2024-11-07  
+garden/esp8266.md                        N/A          2025-02-14   2025-02-14   2024-11-06  
+garden/ai_docker_setup.md                N/A          2025-10-10   2025-10-10   2025-10-10  
+garden/quick_dev.md                      N/A          2025-02-22   2025-02-22   2025-02-22  
+garden/couchdb.md                        N/A          2025-02-14   2025-02-14   2025-01-01  
+garden/flask_startup.md                  N/A          2025-06-01   2025-06-01   2025-06-01  
+garden/building_an_app.md                N/A          2025-02-14   2025-02-14   2025-01-05  
+garden/hugo.md                           N/A          2025-02-14   2025-02-14   2024-12-21  
+library/_index.md                        N/A          2025-02-14   2025-02-14   2024-11-07  
+projects/cutie-robot/_index.md           N/A          2025-02-14   2025-02-14   2024-11-09  

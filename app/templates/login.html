@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Login - To Make Is Human{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <h1>Editor Login</h1>
+
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('auth.login') }}">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+    </div>
+</div>
+
+<style>
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+}
+
+.login-card {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 3rem;
+    box-shadow: var(--shadow);
+    max-width: 400px;
+    width: 100%;
+}
+
+.login-card h1 {
+    margin-bottom: 2rem;
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.login-card .btn {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+}
+
+.alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+</style>
+{% endblock %}

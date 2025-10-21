@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Gardens - To Make Is Human{% endblock %}
+
+{% block content %}
+<div class="gardens-overview">
+    <h1 class="page-title">Digital Gardens</h1>
+    <p class="page-description">Explore different gardens of knowledge and creativity</p>
+
+    <div class="gardens-grid">
+        {% for garden in gardens %}
+        <article class="garden-card">
+            <h2>
+                <a href="{{ url_for('main.garden', garden_slug=garden.slug) }}">
+                    {{ garden.title }}
+                </a>
+            </h2>
+
+            {% if garden.config.description %}
+            <p class="garden-description">{{ garden.config.description }}</p>
+            {% endif %}
+
+            <a href="{{ url_for('main.garden', garden_slug=garden.slug) }}" class="btn btn-primary">
+                Explore Garden
+            </a>
+        </article>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.page-title {
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.page-description {
+    text-align: center;
+    font-size: 1.2rem;
+    color: var(--text-light);
+    margin-bottom: 3rem;
+}
+
+.gardens-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.garden-card {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 2.5rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.garden-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.garden-card:hover::before {
+    transform: scaleX(1);
+}
+
+.garden-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--secondary-color);
+}
+
+.garden-card h2 {
+    margin-bottom: 1rem;
+    font-size: 2rem;
+}
+
+.garden-card h2 a {
+    color: var(--text-color);
+    text-decoration: none;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.garden-description {
+    color: var(--text-light);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    flex-grow: 1;
+}
+
+.garden-card .btn {
+    align-self: flex-start;
+}
+</style>
+{% endblock %}
