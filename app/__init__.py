@@ -12,10 +12,10 @@ def load_user(user_id):
 def create_app(config_class=DevelopmentConfig):
     # Use data directory for instance path in production
     import os
-    instance_path = os.environ.get('DATA_DIR')
+    data_dir = os.environ.get('DATA_DIR')
 
-    if instance_path:
-        app = Flask(__name__, instance_path=instance_path)
+    if data_dir and os.path.isabs(data_dir):
+        app = Flask(__name__, instance_path=data_dir)
     else:
         app = Flask(__name__)
 
