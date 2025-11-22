@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Gardens - To Make Is Human{% endblock %}
+
+{% block content %}
+<div class="gardens-overview">
+    <header class="page-header">
+        <h1 class="page-title">Digital Gardens</h1>
+        <p class="page-description">Explore different gardens of knowledge and creativity</p>
+    </header>
+
+    <main class="main-content">
+        <section class="content-section">
+            <h2 class="section-title">Content</h2>
+            <div class="content-grid">
+                {# Gardens (directories) #}
+                {% for garden in gardens %}
+                <article class="content-card directory-card">
+                    <div class="card-type-badge">📁 Garden</div>
+                    <h2>
+                        <a href="{{ url_for('main.garden', garden_slug=garden.slug) }}">
+                            {{ garden.title }}
+                        </a>
+                    </h2>
+
+                    {% if garden.config.description %}
+                    <p class="card-description">{{ garden.config.description }}</p>
+                    {% endif %}
+
+                    <div class="directory-indicator">
+                        <span>→ Explore Garden</span>
+                    </div>
+                </article>
+                {% endfor %}
+
+                {# Root-level pages (markdown and .page) #}
+                {% for item in root_items %}
+                <article class="content-card">
+                    {% if item.type == 'page' %}
+                    <div class="card-type-badge">📄 Page</div>
+                    {% endif %}
+                    <h2>
+                        <a href="{{ url_for('main.root_page', page_path=item.slug) }}">
+                            {{ item.metadata.title or item.name }}
+                        </a>
+                    </h2>
+
+                    {% if item.metadata.description %}
+                    <p class="card-description">{{ item.metadata.description }}</p>
+                    {% elif item.content %}
+                    <p class="card-description">{{ item.content|striptags|truncate(150) }}</p>
+                    {% endif %}
+
+                    <div class="card-meta">
+                        {% if item.metadata.updated_date %}
+                        <span class="date">Updated: {{ item.metadata.updated_date }}</span>
+                        {% elif item.metadata.published_date %}
+                        <span class="date">{{ item.metadata.published_date }}</span>
+                        {% endif %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    {% if recent_pages %}
+    <aside class="recent-updates">
+        <h2 class="section-title">Recently Updated</h2>
+        <div class="recent-list">
+            {% for page in recent_pages %}
+            <a href="{{ page.url }}" class="recent-item">
+                <span class="recent-date">{{ page.updated_date }}</span>
+                <span class="recent-title">{{ page.title or 'Untitled' }}</span>
+                {% if page.description %}
+                <span class="recent-description">{{ page.description|truncate(80) }}</span>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </aside>
+    {% endif %}
+</div>
+
+<style>
+/* Page Layout */
+.gardens-overview {
+    display: flex;
+    flex-direction: column;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.page-description {
+    font-size: 1.2rem;
+    color: var(--text-light);
+}
+
+.section-title {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 0.5rem;
+}
+
+/* Main Content */
+.main-content {
+    order: 1;
+}
+
+/* Content Section */
+.content-section {
+    margin-top: 1rem;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.content-card {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.content-card:hover::before {
+    transform: scaleX(1);
+}
+
+.content-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--secondary-color);
+}
+
+.content-card h2 {
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.content-card h2 a {
+    color: var(--text-color);
+    text-decoration: none;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.card-description {
+    color: var(--text-light);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    flex-grow: 1;
+}
+
+.card-meta {
+    margin-top: auto;
+    padding-top: 0.5rem;
+}
+
+.card-meta .date {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+/* Directory cards have a distinctive frame */
+.directory-card {
+    border: 3px solid var(--primary-color) !important;
+}
+
+.directory-card:hover {
+    border-color: var(--secondary-color) !important;
+}
+
+.card-type-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: var(--bg-color);
+    color: var(--primary-color);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid var(--primary-color);
+}
+
+.directory-indicator {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 2px dashed var(--border-color);
+    text-align: center;
+}
+
+.directory-indicator span {
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Recent Updates - Mobile First (stacked below main content) */
+.recent-updates {
+    order: 2;
+    margin-top: 3rem;
+    padding: 1.5rem;
+    background: var(--surface-color);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.recent-item {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    grid-template-rows: auto auto;
+    gap: 0.25rem 0.75rem;
+    padding: 0.75rem;
+    background: var(--bg-color);
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.recent-item:hover {
+    background: var(--surface-color);
+    border-color: var(--primary-color);
+    transform: translateX(4px);
+}
+
+.recent-date {
+    grid-row: 1;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    font-family: monospace;
+}
+
+.recent-title {
+    grid-row: 1;
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+}
+
+.recent-description {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    line-height: 1.4;
+}
+
+/* Wide Screen Layout - Sidebar */
+@media (min-width: 1100px) {
+    .gardens-overview {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        grid-template-rows: auto 1fr;
+        gap: 2rem;
+    }
+
+    .page-header {
+        grid-column: 1 / -1;
+        margin-bottom: 1rem;
+    }
+
+    .main-content {
+        grid-column: 1;
+        grid-row: 2;
+        order: unset;
+    }
+
+    .recent-updates {
+        grid-column: 2;
+        grid-row: 2;
+        order: unset;
+        margin-top: 0;
+        position: sticky;
+        top: 2rem;
+        align-self: start;
+        max-height: calc(100vh - 4rem);
+        overflow-y: auto;
+    }
+
+    .recent-updates .section-title {
+        font-size: 1.25rem;
+    }
+
+    .recent-item {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+    }
+
+    .recent-date {
+        grid-row: 1;
+        grid-column: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .recent-title {
+        grid-row: 2;
+        grid-column: 1;
+    }
+
+    .recent-description {
+        grid-column: 1;
+        grid-row: 3;
+        margin-top: 0.25rem;
+    }
+}
+
+/* Extra wide screens */
+@media (min-width: 1400px) {
+    .gardens-overview {
+        grid-template-columns: 1fr 350px;
+    }
+}
+</style>
+{% endblock %}

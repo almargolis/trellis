@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trellis"
+version = "0.1.0"
+description = "A digital garden CMS built with Flask"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Flask",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "Flask>=3.0.0",
+    "Flask-Login>=0.6.3",
+    "Flask-SQLAlchemy>=3.1.1",
+    "Markdown>=3.5.1",
+    "Pygments>=2.17.2",
+    "python-dotenv>=1.0.0",
+    "PyYAML>=6.0.1",
+    "GitPython>=3.1.40",
+    "python-frontmatter>=1.1.0",
+    "Werkzeug>=3.0.0",
+    "Whoosh>=2.7.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+trellis-index = "trellis.cli:index_content"
+trellis-init-db = "trellis.cli:init_db"
+trellis-search = "trellis.cli:rebuild_search"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/trellis"
+Documentation = "https://github.com/yourusername/trellis#readme"
+Repository = "https://github.com/yourusername/trellis"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["trellis*"]

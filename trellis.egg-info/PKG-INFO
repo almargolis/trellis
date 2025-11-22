@@ -1,3 +1,37 @@
+Metadata-Version: 2.4
+Name: trellis
+Version: 0.1.0
+Summary: A digital garden CMS built with Flask
+License: MIT
+Project-URL: Homepage, https://github.com/yourusername/trellis
+Project-URL: Documentation, https://github.com/yourusername/trellis#readme
+Project-URL: Repository, https://github.com/yourusername/trellis
+Classifier: Development Status :: 4 - Beta
+Classifier: Framework :: Flask
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: Flask>=3.0.0
+Requires-Dist: Flask-Login>=0.6.3
+Requires-Dist: Flask-SQLAlchemy>=3.1.1
+Requires-Dist: Markdown>=3.5.1
+Requires-Dist: Pygments>=2.17.2
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: PyYAML>=6.0.1
+Requires-Dist: GitPython>=3.1.40
+Requires-Dist: python-frontmatter>=1.1.0
+Requires-Dist: Werkzeug>=3.0.0
+Requires-Dist: Whoosh>=2.7.4
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+
 # Trellis
 
 A Flask-based digital garden and hierarchical content management system.

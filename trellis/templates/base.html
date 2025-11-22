@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}To Make Is Human{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="container">
+            <a href="{{ url_for('main.index') }}" class="logo">To Make Is Human</a>
+            <form class="nav-search" action="{{ url_for('main.search') }}" method="get">
+                <input type="text" name="q" placeholder="Search..." class="nav-search-input">
+            </form>
+            <div class="nav-links">
+                <a href="{{ url_for('main.index') }}">Home</a>
+                {% if all_gardens %}
+                    {% for garden in all_gardens %}
+                        <a href="{{ url_for('main.garden', garden_slug=garden.slug) }}">{{ garden.title }}</a>
+                    {% endfor %}
+                {% endif %}
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('editor.dashboard') }}">Editor</a>
+                    {% if current_user.is_admin() %}
+                        <a href="{{ url_for('auth.list_users') }}">Users</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.change_password') }}">Change Password</a>
+                    <a href="{{ url_for('auth.logout') }}">Logout</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Al Margolis © {{ now.year if now else '2025' }}</p>
+            {% if not current_user.is_authenticated %}
+            <p class="footer-login"><a href="{{ url_for('auth.login') }}">Login</a></p>
+            {% endif %}
+        </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

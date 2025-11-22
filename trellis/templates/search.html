@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Search{% if query %}: {{ query }}{% endif %} - To Make Is Human{% endblock %}
+
+{% block content %}
+<div class="search-page">
+    <header class="page-header">
+        <h1 class="page-title">Search</h1>
+    </header>
+
+    <form class="search-form" action="{{ url_for('main.search') }}" method="get">
+        <div class="search-input-wrapper">
+            <input type="text"
+                   name="q"
+                   value="{{ query }}"
+                   placeholder="Search content..."
+                   class="search-input"
+                   autofocus>
+            <button type="submit" class="search-button">Search</button>
+        </div>
+    </form>
+
+    {% if error %}
+    <div class="search-error">
+        <p>{{ error }}</p>
+    </div>
+    {% endif %}
+
+    {% if query %}
+    <div class="search-results">
+        {% if results %}
+        <p class="results-count">Found {{ results|length }} result{{ 's' if results|length != 1 else '' }} for "{{ query }}"</p>
+
+        <div class="results-list">
+            {% for result in results %}
+            <article class="result-card">
+                <h2>
+                    <a href="{{ result.url }}">{{ result.title }}</a>
+                </h2>
+                {% if result.description %}
+                <p class="result-description">{{ result.description }}</p>
+                {% endif %}
+                {% if result.garden %}
+                <span class="result-garden">{{ result.garden }}</span>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-results">No results found for "{{ query }}"</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.search-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.search-form {
+    margin-bottom: 2rem;
+}
+
+.search-input-wrapper {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.search-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.search-error {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.results-count {
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+}
+
+.results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.result-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.result-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.result-card h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.result-card h2 a {
+    color: var(--text-color);
+    text-decoration: none;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.result-card h2 a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--primary-color);
+}
+
+.result-description {
+    color: var(--text-light);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.result-garden {
+    display: inline-block;
+    font-size: 0.8rem;
+    color: var(--primary-color);
+    background: var(--bg-color);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid var(--primary-color);
+}
+
+.no-results {
+    text-align: center;
+    color: var(--text-light);
+    font-size: 1.1rem;
+    padding: 3rem;
+    background: var(--surface-color);
+    border-radius: 8px;
+}
+</style>
+{% endblock %}

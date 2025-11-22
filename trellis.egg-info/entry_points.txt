@@ -1,0 +1,4 @@
+[console_scripts]
+trellis-index = trellis.cli:index_content
+trellis-init-db = trellis.cli:init_db
+trellis-search = trellis.cli:rebuild_search

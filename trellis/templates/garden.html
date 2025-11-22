@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}{{ garden.config.title }} - To Make Is Human{% endblock %}
+
+{% block content %}
+<div class="garden-view">
+    <header class="garden-header">
+        <h1>{{ garden.config.title }}</h1>
+        {% if garden.config.description %}
+        <p class="garden-description">{{ garden.config.description }}</p>
+        {% endif %}
+
+        {% if breadcrumbs %}
+        <nav class="breadcrumbs">
+            {% for name, url in breadcrumbs %}
+                {% if url %}
+                    <a href="{{ url }}">{{ name }}</a>
+                    <span class="separator">/</span>
+                {% else %}
+                    <span class="current">{{ name }}</span>
+                {% endif %}
+            {% endfor %}
+        </nav>
+        {% endif %}
+    </header>
+
+    <div class="articles-grid">
+        {% for item in items %}
+            {% if item.type == 'directory' %}
+                {# Content directory card #}
+                <article class="article-card directory-card">
+                    <div class="card-type-badge">📁 Directory</div>
+                    <h2>
+                        <a href="{{ url_for('main.article', garden_slug=garden.slug, article_path=(current_path + '/' + item.name if current_path else item.name)) }}">
+                            {{ item.metadata.title }}
+                        </a>
+                    </h2>
+
+                    {% if item.metadata.description %}
+                    <div class="excerpt">
+                        {{ item.metadata.description }}
+                    </div>
+                    {% endif %}
+
+                    <div class="directory-indicator">
+                        <span>→ Browse contents</span>
+                    </div>
+                </article>
+
+            {% elif item.type in ['page', 'markdown'] %}
+                {# Page or markdown file card #}
+                <article class="article-card">
+                    {% if item.type == 'page' %}
+                    <div class="card-type-badge">📄 Page</div>
+                    {% endif %}
+                    <h2>
+                        <a href="{{ url_for('main.article', garden_slug=garden.slug, article_path=(current_path + '/' + item.slug if current_path else item.slug)) }}">
+                            {{ item.metadata.title }}
+                        </a>
+                    </h2>
+
+                    <div class="article-meta">
+                        {% if item.metadata.created_date %}
+                        <div class="date-info">
+                            <span class="date-label">Created:</span>
+                            <time>{{ item.metadata.created_date }}</time>
+                        </div>
+                        {% endif %}
+                        {% if item.metadata.published_date %}
+                        <div class="date-info">
+                            <span class="date-label">Published:</span>
+                            <time>{{ item.metadata.published_date }}</time>
+                        </div>
+                        {% endif %}
+                        {% if item.metadata.updated_date %}
+                        <div class="date-info">
+                            <span class="date-label">Updated:</span>
+                            <time>{{ item.metadata.updated_date }}</time>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if item.metadata.tags %}
+                    <div class="tags">
+                        {% for tag in item.metadata.tags %}
+                        <span class="tag">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="excerpt">
+                        {{ item.metadata.description or item.content|striptags|truncate(200) }}
+                    </div>
+                </article>
+            {% endif %}
+        {% else %}
+        <div class="empty-garden">
+            <p>No items in this directory yet.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.garden-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 3px solid;
+    border-image: linear-gradient(90deg, var(--primary-color), var(--accent-color)) 1;
+}
+
+.garden-header h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.garden-header .garden-description {
+    font-size: 1.2rem;
+    color: var(--text-light);
+    margin-bottom: 1rem;
+}
+
+.breadcrumbs {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    margin-top: 1rem;
+}
+
+.breadcrumbs a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumbs .separator {
+    margin: 0 0.5rem;
+    color: var(--text-light);
+}
+
+.breadcrumbs .current {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+/* Directory cards have a distinctive frame */
+.directory-card {
+    border: 3px solid var(--primary-color) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.05), rgba(var(--secondary-rgb), 0.05));
+    position: relative;
+}
+
+.directory-card::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0.1;
+}
+
+.directory-card:hover {
+    border-color: var(--secondary-color) !important;
+    transform: translateY(-4px);
+}
+
+.card-type-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: var(--bg-color);
+    color: var(--primary-color);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid var(--primary-color);
+}
+
+.directory-indicator {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px dashed var(--border-color);
+    text-align: center;
+}
+
+.directory-indicator span {
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.empty-garden {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem;
+    color: var(--text-light);
+    font-size: 1.2rem;
+}
+</style>
+{% endblock %}
