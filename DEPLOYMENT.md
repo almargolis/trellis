@@ -22,7 +22,7 @@ cd tmih
 ```bash
 sudo python3 -m venv venv
 sudo chown -R www-data:www-data venv
-sudo -u www-data venv/bin/pip install -r requirements.txt
+sudo -u www-data venv/bin/pip install -e .
 ```
 
 ### 3. Setup Data Directory
@@ -55,6 +55,8 @@ sudo nano /var/www/<site-name>/.env
 Required variables:
 ```
 SECRET_KEY=your-secret-key-here-change-this
+SITE_NAME=Your Site Name
+SITE_AUTHOR=Your Name
 DATA_DIR=/var/www/<site-name>_data
 CONTENT_DIR=/var/www/<site-name>_data/content
 GITLAB_REPO_PATH=/var/www/<site-name>
@@ -63,7 +65,7 @@ GITLAB_REPO_PATH=/var/www/<site-name>
 ### 5. Initialize Database
 ```bash
 cd /var/www/<site-name>
-sudo -u www-data venv/bin/python init_db.py
+sudo -u www-data venv/bin/trellis-init-db
 ```
 
 ### 6. Update WSGI File
@@ -136,7 +138,7 @@ sudo systemctl restart apache2
 ```bash
 cd /var/www/<site-name>
 sudo -u www-data git pull
-sudo -u www-data venv/bin/pip install -r requirements.txt
+sudo -u www-data venv/bin/pip install -e .
 sudo systemctl restart apache2
 ```
 

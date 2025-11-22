@@ -12,14 +12,15 @@ The name "Trellis" reflects the system's hierarchical structure - like a garden 
 
 ### Initial Setup
 ```bash
-# Activate virtual environment
-source tmih_venv/bin/activate
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install trellis
+pip install -e .
 
 # Initialize database
-python init_db.py
+trellis-init-db
 ```
 
 Default admin credentials after init: `admin` / `admin` (change immediately)
@@ -34,8 +35,10 @@ python run.py
 ### Environment Variables
 Copy `.env.example` to `.env` and configure:
 - `SECRET_KEY`: Flask secret key
-- `DATA_DIR`: Directory for database and writable content (defaults to `./data`)
-- `CONTENT_DIR`: Directory for markdown content (defaults to `./content`)
+- `SITE_NAME`: Site name displayed in header/footer (defaults to `Trellis`)
+- `SITE_AUTHOR`: Author name displayed in footer (optional)
+- `DATA_DIR`: Directory for database and writable content (required)
+- `CONTENT_DIR`: Directory for markdown content (defaults to `DATA_DIR/content`)
 - `GITLAB_REPO_PATH`: Path to git repository for auto-commits (defaults to `.`)
 
 ## Architecture
@@ -82,8 +85,8 @@ The application uses a "digital garden" concept:
 ### Production Architecture
 
 Production uses a separate data directory structure:
-- **Repository**: `/var/www/tmih_flask/` (read-only code)
-- **Data Directory**: `/var/www/tmih_flask_data/` (writable database and content)
+- **Repository**: `/var/www/trellis/` (read-only code)
+- **Data Directory**: `/var/www/trellis_data/` (writable database and content)
 - Database and content are stored outside git repo for write permissions
 
 This separation is configured via `DATA_DIR` and `CONTENT_DIR` environment variables.
@@ -206,5 +209,5 @@ This codebase does not currently have automated tests. When adding features:
 For production deployment, refer to `DEPLOYMENT.md`. Key points:
 - Use `setup_production.sh` script to configure data directory
 - Set production environment variables in `.env`
-- Run under Apache/WSGI with `tmih_flask.wsgi`
+- Run under Apache/WSGI with `trellis.wsgi`
 - Ensure `www-data` has write permissions to `DATA_DIR`

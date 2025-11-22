@@ -45,10 +45,11 @@ trellis-index = "trellis.cli:index_content"
 trellis-init-db = "trellis.cli:init_db"
 trellis-search = "trellis.cli:rebuild_search"
 
+# Update these URLs when publishing to GitHub
 [project.urls]
-Homepage = "https://github.com/yourusername/trellis"
-Documentation = "https://github.com/yourusername/trellis#readme"
-Repository = "https://github.com/yourusername/trellis"
+Homepage = "https://github.com/almargolis/trellis"
+Documentation = "https://github.com/almargolis/trellis#readme"
+Repository = "https://github.com/almargolis/trellis"
 
 [tool.setuptools.packages.find]
 where = ["."]

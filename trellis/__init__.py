@@ -51,4 +51,14 @@ def create_app(config_class=None):
     app.register_blueprint(routes.editor_bp)
     app.register_blueprint(routes.auth_bp)
 
+    # Inject site branding into all templates
+    @app.context_processor
+    def inject_site_config():
+        from datetime import datetime
+        return {
+            'site_name': app.config.get('SITE_NAME', 'Trellis'),
+            'site_author': app.config.get('SITE_AUTHOR', ''),
+            'now': datetime.now(),
+        }
+
     return app

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}To Make Is Human{% endblock %}</title>
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     {% block extra_css %}{% endblock %}
@@ -11,7 +11,7 @@
 <body>
     <nav class="main-nav">
         <div class="container">
-            <a href="{{ url_for('main.index') }}" class="logo">To Make Is Human</a>
+            <a href="{{ url_for('main.index') }}" class="logo">{{ site_name }}</a>
             <form class="nav-search" action="{{ url_for('main.search') }}" method="get">
                 <input type="text" name="q" placeholder="Search..." class="nav-search-input">
             </form>
@@ -40,7 +40,7 @@
 
     <footer>
         <div class="container">
-            <p>Al Margolis © {{ now.year if now else '2025' }}</p>
+            <p>{% if site_author %}{{ site_author }} © {% endif %}{{ now.year }}</p>
             {% if not current_user.is_authenticated %}
             <p class="footer-login"><a href="{{ url_for('auth.login') }}">Login</a></p>
             {% endif %}

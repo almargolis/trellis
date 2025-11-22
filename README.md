@@ -31,11 +31,11 @@ cd trellis
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install trellis
+pip install -e .
 
 # Initialize database
-python init_db.py
+trellis-init-db
 ```
 
 ### Running
@@ -97,8 +97,8 @@ content/
 
 ## License
 
-[Your License Here]
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Contributing
 
-[Your Contributing Guidelines]
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

@@ -20,6 +20,10 @@ class TrellisConfig:
     """
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-change-in-production'
 
+    # Site branding - override these for your site
+    SITE_NAME = os.environ.get('SITE_NAME', 'Trellis')
+    SITE_AUTHOR = os.environ.get('SITE_AUTHOR', '')
+
     # Data directory - writable location for databases
     # Must be set via environment or subclass
     DATA_DIR = os.environ.get('DATA_DIR', '')
