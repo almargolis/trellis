@@ -7,6 +7,10 @@ Command-line utilities for Trellis sites.
 import argparse
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def index_content():
