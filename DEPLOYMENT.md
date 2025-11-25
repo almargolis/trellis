@@ -75,11 +75,41 @@ sudo -u www-data venv/bin/trellis-search --rebuild
 
 This builds the full-text search index from your content.
 
-### 7. Update WSGI File
-Edit `trellis.wsgi` to match your paths:
-```python
-project_home = '/var/www/<site-name>'
+### 7. Create WSGI File
+Create `trellis.wsgi` in your site directory:
+```bash
+sudo nano /var/www/<site-name>/trellis.wsgi
 ```
+
+Complete WSGI file contents:
+```python
+#!/usr/bin/env python3
+"""
+WSGI configuration for Trellis site deployment.
+"""
+import sys
+import os
+from pathlib import Path
+
+# Add your project directory to the sys.path
+project_home = '/var/www/<site-name>'
+if project_home not in sys.path:
+    sys.path.insert(0, project_home)
+
+# Change to project directory
+os.chdir(project_home)
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+env_path = Path(project_home) / '.env'
+load_dotenv(dotenv_path=env_path)
+
+# Import and create the Flask application
+from trellis import create_app
+application = create_app()
+```
+
+**Important**: Replace `<site-name>` with your actual site directory name (e.g., `tmih`).
 
 ### 8. Set Permissions
 ```bash
