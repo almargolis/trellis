@@ -20,32 +20,17 @@ Trellis is a flexible CMS for building digital gardens with hierarchical content
 
 ## Quick Start
 
-### Installation
+See [QUICKSTART.md](QUICKSTART.md) for detailed instructions on creating a new site.
 
+**TL;DR:**
 ```bash
-# Clone the repository
-git clone <your-repo-url> trellis
-cd trellis
+# Install Trellis
+git clone https://github.com/almargolis/trellis.git
+pip install -e ./trellis
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install trellis
-pip install -e .
-
-# Initialize database
+# Set up your site (see QUICKSTART.md for details)
 trellis-init-db
-```
-
-### Running
-
-```bash
-# Development server
 python run.py
-# Visit http://localhost:5000
-
-# Default credentials: admin/admin (change immediately!)
 ```
 
 ## Content Structure
