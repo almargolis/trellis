@@ -37,10 +37,17 @@ class TrellisConfig:
     GITLAB_REPO_PATH = os.environ.get('GITLAB_REPO_PATH', '.')
 
     # Database at root of data directory
-    @property
-    def SQLALCHEMY_DATABASE_URI(self):
+    # Computed from DATA_DIR - override in subclass if needed
+    @classmethod
+    def get_database_uri(cls):
+        """Get database URI from environment or DATA_DIR."""
+        data_dir = os.environ.get('DATA_DIR', cls.DATA_DIR or '')
         return os.environ.get('DATABASE_URL') or \
-            'sqlite:///' + os.path.join(self.DATA_DIR, 'trellis_admin.db')
+            'sqlite:///' + os.path.join(data_dir, 'trellis_admin.db')
+
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or (
+        'sqlite:///' + os.path.join(DATA_DIR, 'trellis_admin.db') if DATA_DIR else ''
+    )
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'

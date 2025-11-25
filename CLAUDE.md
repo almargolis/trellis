@@ -21,6 +21,9 @@ pip install -e .
 
 # Initialize database
 trellis-init-db
+
+# Initialize search index (after adding content)
+trellis-search --rebuild
 ```
 
 Default admin credentials after init: `admin` / `admin` (change immediately)

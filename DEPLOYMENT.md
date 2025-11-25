@@ -68,27 +68,34 @@ cd /var/www/<site-name>
 sudo -u www-data venv/bin/trellis-init-db
 ```
 
-### 6. Update WSGI File
+### 6. Initialize Search Index
+```bash
+sudo -u www-data venv/bin/trellis-search --rebuild
+```
+
+This builds the full-text search index from your content.
+
+### 7. Update WSGI File
 Edit `trellis.wsgi` to match your paths:
 ```python
 project_home = '/var/www/<site-name>'
 ```
 
-### 7. Set Permissions
+### 8. Set Permissions
 ```bash
 sudo chown -R www-data:www-data /var/www/<site-name>
 sudo chmod -R 755 /var/www/<site-name>
 sudo chmod -R 775 /var/www/<site-name>_data
 ```
 
-### 8. SELinux (if enabled)
+### 9. SELinux (if enabled)
 ```bash
 sudo chcon -R -t httpd_sys_rw_content_t /var/www/<site-name>_data
 sudo chcon -R -t httpd_sys_content_t /var/www/<site-name>
 sudo setsebool -P httpd_can_network_connect_db 1
 ```
 
-### 9. Apache Configuration
+### 10. Apache Configuration
 Create vhost config at `/etc/apache2/sites-available/<site-name>.conf`:
 ```apache
 <VirtualHost *:80>

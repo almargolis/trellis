@@ -10,6 +10,7 @@ Trellis is a flexible CMS for building digital gardens with hierarchical content
 
 - 📁 **Hierarchical Content Structure** - Organize content in nested `.page` directories with unlimited depth
 - 📝 **Markdown-Based** - Write content in markdown with YAML frontmatter
+- 🔍 **Full-Text Search** - Powered by Whoosh with error-tolerant query parsing
 - 🔗 **Include System** - Reference other files using `{{include: filename}}` syntax
 - 🖼️ **Page-Specific Assets** - Store images and files alongside your content
 - 🔐 **User Authentication** - Role-based access control (admin/editor)
@@ -30,6 +31,7 @@ pip install -e ./trellis
 
 # Set up your site (see QUICKSTART.md for details)
 trellis-init-db
+trellis-search --rebuild  # Initialize search index
 python run.py
 ```
 
@@ -77,6 +79,7 @@ content/
 - **Flask** - Web framework
 - **SQLAlchemy** - Database ORM
 - **Markdown** - Content format with Python-Markdown extensions
+- **Whoosh** - Full-text search engine
 - **GitPython** - Git integration
 - **Flask-Login** - Authentication
 

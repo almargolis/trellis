@@ -100,7 +100,15 @@ This is my first post!
 EOF
 ```
 
-### 8. Run Development Server
+### 8. Initialize Search Index
+
+```bash
+trellis-search --rebuild
+```
+
+This builds the full-text search index from your content. Rerun this command after adding new content to update the search index.
+
+### 9. Run Development Server
 
 ```bash
 python run.py
