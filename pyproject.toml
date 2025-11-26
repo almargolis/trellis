@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel", "setuptools_scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "trellis"
+name = "trellis-cms"
 dynamic = ["version"]
 description = "A digital garden CMS built with Flask"
 readme = "README.md"
@@ -58,3 +58,4 @@ include = ["trellis*"]
 [tool.setuptools_scm]
 # Version is automatically derived from git tags
 # Tags should be in format: v0.1.0, v0.2.0, etc.
+local_scheme = "no-local-version"
