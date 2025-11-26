@@ -22,6 +22,11 @@ git clone https://github.com/almargolis/trellis.git
 pip install -e ./trellis
 ```
 
+Note: You can clone trellis into almost any directory you choose except for your
+application directory. The trellis import will fail if that directory name exists
+in your application directory -- at least under Apache. A better choice is
+/var/www/trellis.
+
 **Option B: From PyPI (once published)**
 ```bash
 pip install trellis-cms  # Not yet available

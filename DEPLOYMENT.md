@@ -18,11 +18,23 @@ sudo git clone <your-repository-url> tmih
 cd tmih
 ```
 
-### 2. Create Virtual Environment
+### 2. Install Trellis
 ```bash
+# Create virtual environment
 sudo python3 -m venv venv
 sudo chown -R www-data:www-data venv
-sudo -u www-data venv/bin/pip install -e .
+
+# Install Trellis (choose one method):
+
+# Option A: Clone and install from GitHub
+sudo -u www-data git clone https://github.com/almargolis/trellis.git
+sudo -u www-data venv/bin/pip install -e ./trellis
+
+# Option B: Install from PyPI (when available)
+# sudo -u www-data venv/bin/pip install trellis-cms
+
+# Install any additional dependencies
+sudo -u www-data venv/bin/pip install python-dotenv
 ```
 
 ### 3. Setup Data Directory
@@ -89,20 +101,22 @@ WSGI configuration for Trellis site deployment.
 """
 import sys
 import os
-from pathlib import Path
 
-# Add your project directory to the sys.path
+# Set the project directory
 project_home = '/var/www/<site-name>'
-if project_home not in sys.path:
-    sys.path.insert(0, project_home)
 
-# Change to project directory
+# Change to project directory to find .env file
 os.chdir(project_home)
+
+# Activate virtual environment
+activate_this = os.path.join(project_home, 'venv', 'bin', 'activate_this.py')
+if os.path.exists(activate_this):
+    with open(activate_this) as f:
+        exec(f.read(), {'__file__': activate_this})
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
-env_path = Path(project_home) / '.env'
-load_dotenv(dotenv_path=env_path)
+load_dotenv(os.path.join(project_home, '.env'))
 
 # Import and create the Flask application
 from trellis import create_app
@@ -133,6 +147,18 @@ Create vhost config at `/etc/apache2/sites-available/<site-name>.conf`:
 
     WSGIDaemonProcess <site-name> user=www-data group=www-data threads=5 python-home=/var/www/<site-name>/venv
     WSGIScriptAlias / /var/www/<site-name>/trellis.wsgi
+
+    # Serve static files directly with Apache (more efficient)
+    Alias /static /var/www/<site-name>/trellis/trellis/static
+    <Directory /var/www/<site-name>/trellis/trellis/static>
+        Require all granted
+    </Directory>
+
+    # Serve page-specific assets from content directory
+    Alias /assets /var/www/<site-name>_data/content
+    <Directory /var/www/<site-name>_data/content>
+        Require all granted
+    </Directory>
 
     <Directory /var/www/<site-name>>
         WSGIProcessGroup <site-name>

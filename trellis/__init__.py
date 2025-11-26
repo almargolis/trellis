@@ -6,6 +6,8 @@ Flask application factory for Trellis digital garden CMS.
 from flask import Flask
 from flask_login import LoginManager
 
+__all__ = ['create_app']
+
 login_manager = LoginManager()
 
 @login_manager.user_loader
