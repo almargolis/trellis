@@ -44,6 +44,13 @@ def create_app(config_class=None):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
 
+    # Initialize commenting system
+    from qdcomments import init_comments
+    init_comments(app, config={
+        'COMMENTS_ENABLED': app.config.get('COMMENTS_ENABLED', True),
+        'BLOCKED_WORDS_PATH': os.path.join(app.config.get('DATA_DIR', '.'), 'blocked_words.yaml'),
+    }, db_instance=db)
+
     # Create tables
     with app.app_context():
         db.create_all()

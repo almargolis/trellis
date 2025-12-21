@@ -184,11 +184,35 @@ def article(garden_slug, article_path):
     # Build breadcrumbs
     breadcrumbs = garden_manager.get_breadcrumbs(garden_slug, article_path)
 
+    # Load comments for this article
+    from qdcomments.models import Comment
+    from qdcomments.filters import CommentContentProcessor
+
+    content_id = f"{garden_slug}/{article_path}"
+    comments_raw = Comment.get_for_content(
+        content_type='article',
+        content_id=content_id,
+        status='p'
+    ).all()
+
+    # Process comments for display
+    processor = CommentContentProcessor(current_app.config.get('BLOCKED_WORDS_PATH'))
+
+    comments = []
+    for comment in comments_raw:
+        processed_html, _, _ = processor.process_comment(comment.content, comment.user_comment_style)
+        comment.content = processed_html  # Replace raw content with HTML
+        comments.append(comment)
+
     return render_template('article.html',
                          article=article,
                          garden=garden,
                          all_gardens=all_gardens,
-                         breadcrumbs=breadcrumbs)
+                         breadcrumbs=breadcrumbs,
+                         comments_enabled=current_app.config.get('COMMENTS_ENABLED', True),
+                         comments=comments,
+                         content_type='article',
+                         content_id=content_id)
 
 @main_bp.route('/garden/<garden_slug>/<path:article_path>/assets/<filename>')
 def page_asset(garden_slug, article_path, filename):

@@ -41,4 +41,16 @@
     </div>
     {% endif %}
 </article>
+
+{% if comments_enabled %}
+<div id="comments-section">
+    <h2>Comments</h2>
+
+    {# Comment submission form #}
+    {% include 'qdcomments/comment_form.html' %}
+
+    {# Comment list #}
+    {% include 'qdcomments/comment_list.html' %}
+</div>
+{% endif %}
 {% endblock %}

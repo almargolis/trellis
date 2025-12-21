@@ -6,6 +6,7 @@
     <title>{% block title %}{{ site_name }}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('comments.static', filename='qdcomments/comments.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -26,6 +27,9 @@
                     <a href="{{ url_for('editor.dashboard') }}">Editor</a>
                     {% if current_user.is_admin() %}
                         <a href="{{ url_for('auth.list_users') }}">Users</a>
+                    {% endif %}
+                    {% if current_user.role in ['admin', 'editor'] %}
+                        <a href="{{ url_for('comments.moderation_queue') }}">Comments</a>
                     {% endif %}
                     <a href="{{ url_for('auth.change_password') }}">Change Password</a>
                     <a href="{{ url_for('auth.logout') }}">Logout</a>

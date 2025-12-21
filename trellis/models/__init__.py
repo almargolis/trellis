@@ -16,6 +16,10 @@ class User(UserMixin, db.Model):
     last_login = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True)
 
+    # Comment-related fields (used by qdcomments package)
+    comment_style = db.Column(db.String(1), nullable=False, default='t')  # 't', 'h', 'm'
+    moderation_level = db.Column(db.String(1), nullable=False, default='1')  # '0', '1', '9'
+
     def set_password(self, password):
         """Hash and set the user's password"""
         self.password_hash = generate_password_hash(password)
