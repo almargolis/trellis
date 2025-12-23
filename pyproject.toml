@@ -32,6 +32,8 @@ dependencies = [
     "python-frontmatter>=1.1.0",
     "Werkzeug>=3.0.0",
     "Whoosh>=2.7.4",
+    "qdflask",
+    "qdcomments",
 ]
 
 [project.optional-dependencies]

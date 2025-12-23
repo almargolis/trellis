@@ -603,3 +603,18 @@ footer {
         padding: 1.5rem;
     }
 }
+
+/* ============================================================================
+   Wiki-Links
+   ============================================================================ */
+
+.broken-wikilink {
+    color: #d32f2f;
+    background-color: #ffebee;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 0.9em;
+    cursor: help;
+    border-bottom: 1px dashed #d32f2f;
+}

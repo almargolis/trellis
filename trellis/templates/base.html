@@ -24,15 +24,15 @@
                     {% endfor %}
                 {% endif %}
                 {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('editor.dashboard') }}">Editor</a>
+                    {% if current_user.is_editor() %}
+                        <a href="{{ url_for('editor.dashboard') }}">Editor</a>
+                    {% endif %}
                     {% if current_user.is_admin() %}
                         <a href="{{ url_for('auth.list_users') }}">Users</a>
                     {% endif %}
-                    {% if current_user.role in ['admin', 'editor'] %}
+                    {% if current_user.is_editor() %}
                         <a href="{{ url_for('comments.moderation_queue') }}">Comments</a>
                     {% endif %}
-                    <a href="{{ url_for('auth.change_password') }}">Change Password</a>
-                    <a href="{{ url_for('auth.logout') }}">Logout</a>
                 {% endif %}
             </div>
         </div>
@@ -45,8 +45,14 @@
     <footer>
         <div class="container">
             <p>{% if site_author %}{{ site_author }} © {% endif %}{{ now.year }}</p>
-            {% if not current_user.is_authenticated %}
-            <p class="footer-login"><a href="{{ url_for('auth.login') }}">Login</a></p>
+            {% if current_user.is_authenticated %}
+            <p class="footer-user">
+                Logged in as {{ current_user.role|capitalize }} {{ current_user.username }}.
+                <a href="{{ url_for('auth.change_password') }}">Change Password</a> |
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
+            </p>
+            {% else %}
+            <p class="footer-login"><a href="{{ url_for('auth.reader_login') }}">Login</a></p>
             {% endif %}
         </div>
     </footer>

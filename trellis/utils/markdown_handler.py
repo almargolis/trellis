@@ -6,8 +6,9 @@ from datetime import datetime
 import re
 
 class MarkdownHandler:
-    def __init__(self, content_dir):
+    def __init__(self, content_dir, data_dir=None):
         self.content_dir = Path(content_dir)
+        self.data_dir = Path(data_dir) if data_dir else None
         self.md = markdown.Markdown(extensions=[
             'fenced_code',
             'codehilite',
@@ -16,6 +17,8 @@ class MarkdownHandler:
             'footnotes',
             'attr_list'
         ])
+        self._content_index = None
+        self._broken_links = []
 
     def parse_file(self, filename):
         """Parse markdown file and return metadata + content
@@ -35,18 +38,104 @@ class MarkdownHandler:
         with open(filepath, 'r', encoding='utf-8') as f:
             post = frontmatter.load(f)
 
-        # Process includes before converting to HTML
+        # Process includes and wiki-links before converting to HTML
         processed_content = self._process_includes(post.content, filepath.parent)
+        processed_content = self._process_wikilinks(processed_content)
 
         html_content = self.md.convert(processed_content)
 
-        return {
+        result = {
             'metadata': post.metadata,
             'content': html_content,
             'raw_content': post.content,
             'slug': self.generate_slug(filename),
             'is_page_dir': filepath.name == 'page.md'
         }
+
+        # Include broken links if any were found
+        if self._broken_links:
+            result['broken_links'] = self._broken_links.copy()
+            self._broken_links = []
+
+        return result
+
+    def _get_content_index(self):
+        """Lazy-load content index for wiki-link resolution"""
+        if self._content_index is None and self.data_dir:
+            from trellis.models.content_index import ContentIndex
+            self._content_index = ContentIndex(self.data_dir)
+        return self._content_index
+
+    def _process_wikilinks(self, content):
+        """Process [[Page Title]] wiki-link syntax
+
+        Supports:
+        - [[Page Title]] - Link by title
+        - [[page-slug]] - Link by slug/path
+        - [[Page Title|Custom Text]] - Custom display text
+        - [[garden/page-slug]] - Garden-specific slug
+
+        Returns markdown links: [text](url)
+        Tracks broken links in self._broken_links
+        """
+        wikilink_pattern = r'\[\[([^\]]+)\]\]'
+
+        def replace_wikilink(match):
+            link_text = match.group(1).strip()
+
+            # Parse custom display text if present
+            if '|' in link_text:
+                target, display_text = link_text.split('|', 1)
+                target = target.strip()
+                display_text = display_text.strip()
+            else:
+                target = link_text
+                display_text = None
+
+            # Try to resolve the link
+            page = self._resolve_wikilink(target)
+
+            if page:
+                url = page['url']
+                title = display_text or page['title'] or target
+                return f"[{title}]({url})"
+            else:
+                # Broken link - preserve original syntax and track it
+                self._broken_links.append(target)
+                # Return a span with broken-link class for styling
+                return f'<span class="broken-wikilink" title="Page not found: {target}">[[{link_text}]]</span>'
+
+        return re.sub(wikilink_pattern, replace_wikilink, content)
+
+    def _resolve_wikilink(self, target):
+        """Resolve a wiki-link target to a page
+
+        Args:
+            target: Page title or slug to find
+
+        Returns:
+            Page dict with url and title, or None if not found
+        """
+        content_index = self._get_content_index()
+        if not content_index:
+            return None
+
+        # Try exact title match first (case-insensitive)
+        page = content_index.find_page_by_title(target)
+        if page:
+            return page
+
+        # Try as slug/path
+        page = content_index.find_page_by_slug(target)
+        if page:
+            return page
+
+        # Try fuzzy title match as fallback
+        fuzzy_matches = content_index.find_pages_by_title_fuzzy(target, limit=1)
+        if fuzzy_matches:
+            return fuzzy_matches[0]
+
+        return None
 
     def _process_includes(self, content, base_path):
         """Process {{include: filename}} syntax in markdown content"""

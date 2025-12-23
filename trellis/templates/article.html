@@ -35,7 +35,7 @@
         {{ article.content|safe }}
     </div>
 
-    {% if current_user.is_authenticated %}
+    {% if current_user.is_authenticated and current_user.is_editor() %}
     <div class="admin-actions">
         <a href="{{ url_for('editor.edit', garden_slug=garden.slug, article_path=article.slug) }}" class="btn btn-edit">Edit Article</a>
     </div>

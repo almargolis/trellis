@@ -13,10 +13,24 @@
 
         <form method="POST" action="{{ url_for('auth.edit_user', user_id=user.id) }}">
             <div class="form-group">
+                <label for="email_address">Email Address (optional)</label>
+                <input type="email" id="email_address" name="email_address" class="form-control" value="{{ user.email_address or '' }}">
+                <small class="form-text">Leave blank to prevent user from receiving emails</small>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="email_verified" {% if user.email_verified == 'Y' %}checked{% endif %}>
+                    Email is verified (user can receive notifications)
+                </label>
+            </div>
+
+            <div class="form-group">
                 <label for="role">Role</label>
                 <select id="role" name="role" class="form-control">
-                    <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>Editor</option>
-                    <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                    <option value="reader" {% if user.role == 'reader' %}selected{% endif %}>Reader (can comment)</option>
+                    <option value="editor" {% if user.role == 'editor' %}selected{% endif %}>Editor (can edit content)</option>
+                    <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin (can manage users)</option>
                 </select>
             </div>
 

@@ -128,6 +128,46 @@ status: published
 - Include files: Use `{{include: filename}}` syntax to include content from other files
 - Clean URLs: `.page` extension is stripped (e.g., `/garden/projects/article`)
 
+### Wiki-Links for Internal Linking
+
+Trellis supports wiki-style linking for easy cross-referencing between pages:
+
+**Syntax:**
+```markdown
+[[Page Title]]              # Link by exact title (case-insensitive)
+[[page-slug]]               # Link by slug or path
+[[garden/page-slug]]        # Garden-specific slug
+[[Page Title|Custom Text]]  # Custom display text
+```
+
+**How it works:**
+- Links are resolved at render time using `trellis_content.db` for fast lookups
+- The system tries multiple resolution strategies:
+  1. Exact title match (case-insensitive)
+  2. URL slug match
+  3. Fuzzy title match as fallback
+- Resolved links become standard markdown: `[text](url)`
+- Broken links are shown with red styling and tracked
+
+**Examples:**
+```markdown
+See [[Getting Started]] for basics.
+Learn about [[python/decorators|Python decorators]].
+Check the [[API Reference]].
+```
+
+**Broken Links:**
+- Displayed with red background and dashed underline
+- Preserve original `[[...]]` syntax for easy identification
+- Hover shows "Page not found: {target}" tooltip
+
+**When to use:**
+- Prefer wiki-links for internal references (resilient to URL changes)
+- Use standard markdown links for external URLs
+- Wiki-links work across all gardens
+
+**Note:** Links are resolved when pages are rendered. To use wiki-links, ensure your content is indexed with `trellis-search --rebuild`.
+
 Each garden directory should have `config.yaml`:
 ```yaml
 title: Garden Display Name

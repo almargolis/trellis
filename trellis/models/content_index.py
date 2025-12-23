@@ -47,6 +47,7 @@ class ContentIndex:
             ''')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_updated_date ON pages(updated_date DESC)')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_source_file ON pages(source_file)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_title ON pages(title COLLATE NOCASE)')
             conn.commit()
 
     def _get_connection(self):
@@ -197,3 +198,95 @@ class ContentIndex:
         with self._get_connection() as conn:
             conn.execute('DELETE FROM pages')
             conn.commit()
+
+    def find_page_by_title(self, title):
+        """Find a page by exact title match (case-insensitive)
+
+        Args:
+            title: Page title to search for
+
+        Returns:
+            Dictionary with page info or None if not found
+        """
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute('''
+                SELECT url, source_file, title, description
+                FROM pages
+                WHERE LOWER(title) = LOWER(?)
+                LIMIT 1
+            ''', (title,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def find_pages_by_title_fuzzy(self, title, limit=5):
+        """Find pages with titles similar to the search term
+
+        Args:
+            title: Title to search for
+            limit: Maximum results
+
+        Returns:
+            List of page dictionaries, ordered by relevance
+        """
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute('''
+                SELECT url, source_file, title, description
+                FROM pages
+                WHERE LOWER(title) LIKE LOWER(?)
+                ORDER BY LENGTH(title), title
+                LIMIT ?
+            ''', (f'%{title}%', limit))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def find_page_by_slug(self, slug):
+        """Find a page by URL slug pattern
+
+        Tries multiple patterns:
+        - /garden/{slug}
+        - Exact URL match
+        - URL ending with slug
+
+        Args:
+            slug: URL slug or path to search for
+
+        Returns:
+            Dictionary with page info or None if not found
+        """
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Try exact URL match first
+            cursor = conn.execute('''
+                SELECT url, source_file, title, description
+                FROM pages
+                WHERE url = ?
+                LIMIT 1
+            ''', (slug if slug.startswith('/') else f'/{slug}',))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+
+            # Try URL ending with slug
+            cursor = conn.execute('''
+                SELECT url, source_file, title, description
+                FROM pages
+                WHERE url LIKE ?
+                ORDER BY LENGTH(url)
+                LIMIT 1
+            ''', (f'%/{slug}',))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+
+            # Try as garden/slug pattern
+            cursor = conn.execute('''
+                SELECT url, source_file, title, description
+                FROM pages
+                WHERE url LIKE ?
+                ORDER BY LENGTH(url)
+                LIMIT 1
+            ''', (f'%/{slug}',))
+            row = cursor.fetchone()
+            return dict(row) if row else None

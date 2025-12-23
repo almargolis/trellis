@@ -9,12 +9,30 @@ from trellis.utils.garden_manager import GardenManager
 from trellis.utils.search_index import SearchIndex
 from flask import current_app
 from werkzeug.utils import secure_filename
+from functools import wraps
 import os
 from pathlib import Path
 
 main_bp = Blueprint('main', __name__)
 editor_bp = Blueprint('editor', __name__, url_prefix='/editor')
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+# ============================================================================
+# Decorators
+# ============================================================================
+
+def editor_required(f):
+    """Decorator to require editor or admin role for a route"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.editor_login'))
+        if not current_user.is_editor():
+            return render_template('error.html',
+                error="Access Denied",
+                message="You need editor or admin privileges to access this page."), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 # ============================================================================
 # Main Routes
@@ -28,7 +46,7 @@ def index():
 
     # Get root-level pages (markdown files and .page directories at content root)
     content_path = Path(current_app.config['CONTENT_DIR'])
-    handler = MarkdownHandler(content_path)
+    handler = MarkdownHandler(content_path, current_app.config.get('DATA_DIR'))
     root_items = []
     for item in handler.list_items():
         # Only include pages, not directories (those are gardens)
@@ -50,7 +68,7 @@ def index():
 def root_page(page_path):
     """Show a root-level page (markdown or .page directory at content root)"""
     content_path = Path(current_app.config['CONTENT_DIR'])
-    handler = MarkdownHandler(content_path)
+    handler = MarkdownHandler(content_path, current_app.config.get('DATA_DIR'))
 
     # Find the page
     articles = handler.list_items()
@@ -112,7 +130,7 @@ def garden(garden_slug):
 
     # Get items (directories, pages, markdown files) at this level
     garden_path = Path(current_app.config['CONTENT_DIR']) / garden_slug
-    handler = MarkdownHandler(garden_path)
+    handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
     items = handler.list_items()
 
     # Build breadcrumbs
@@ -156,7 +174,7 @@ def article(garden_slug, article_path):
 
     if potential_dir.exists() and potential_dir.is_dir() and potential_dir.suffix != '.page':
         # This is a content directory - show directory listing
-        handler = MarkdownHandler(potential_dir)
+        handler = MarkdownHandler(potential_dir, current_app.config.get('DATA_DIR'))
         items = handler.list_items()
 
         # Get config for this directory
@@ -173,7 +191,7 @@ def article(garden_slug, article_path):
                              current_path=article_path)
 
     # Not a directory, try to find as article/page
-    handler = MarkdownHandler(content_dir)
+    handler = MarkdownHandler(content_dir, current_app.config.get('DATA_DIR'))
     articles = handler.list_articles()
 
     # Match article by slug (which has .page extensions stripped)
@@ -263,7 +281,8 @@ def page_asset(garden_slug, article_path, filename):
 # ============================================================================
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-def login():
+def reader_login():
+    """Reader login - for commenting and viewing"""
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -272,11 +291,87 @@ def login():
         if user and user.is_active and user.check_password(password):
             login_user(user)
             user.update_last_login()
+
+            # Redirect based on next parameter or role
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('main.index'))
+
+        return render_template('reader_login.html', error="Invalid credentials"), 401
+
+    return render_template('reader_login.html')
+
+@auth_bp.route('/editor-login', methods=['GET', 'POST'])
+def editor_login():
+    """Editor/Admin login - for content editing"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        user = User.get_by_username(username)
+        if user and user.is_active and user.check_password(password):
+            # Check if user has editor or admin role
+            if not user.is_editor():
+                return render_template('editor_login.html', error="You don't have permission to access the editor"), 403
+
+            login_user(user)
+            user.update_last_login()
             return redirect(url_for('editor.dashboard'))
 
-        return render_template('login.html', error="Invalid credentials"), 401
+        return render_template('editor_login.html', error="Invalid credentials"), 401
 
-    return render_template('login.html')
+    return render_template('editor_login.html')
+
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """Reader registration - create account for commenting"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email_address = request.form.get('email_address', '').strip()
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
+
+        # Preserve form data for error cases
+        form_data = {
+            'username': username,
+            'email_address': email_address
+        }
+
+        # Validation
+        if not username or not email_address or not password:
+            return render_template('register.html', error="All fields are required", form=form_data)
+
+        if password != password_confirm:
+            return render_template('register.html', error="Passwords do not match", form=form_data)
+
+        if len(password) < 6:
+            return render_template('register.html', error="Password must be at least 6 characters", form=form_data)
+
+        if not User.validate_email(email_address):
+            return render_template('register.html', error="Invalid email address", form=form_data)
+
+        if User.get_by_username(username):
+            return render_template('register.html', error="Username already exists", form=form_data)
+
+        if User.get_by_email(email_address):
+            return render_template('register.html', error="Email already registered", form=form_data)
+
+        # Create reader account
+        new_user = User(username=username, email_address=email_address, role='reader')
+        new_user.set_password(password)
+
+        from trellis.models import db
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Auto-login after registration
+        login_user(new_user)
+        new_user.update_last_login()
+
+        return redirect(url_for('main.index'))
+
+    return render_template('register.html', form={})
 
 @auth_bp.route('/logout')
 @login_required
@@ -330,24 +425,31 @@ def add_user():
 
     if request.method == 'POST':
         username = request.form.get('username')
+        email_address = request.form.get('email_address')
         password = request.form.get('password')
         role = request.form.get('role', 'editor')
 
         # Validation
-        if not username or not password:
-            return render_template('add_user.html', error="Username and password are required")
+        if not username or not password or not email_address:
+            return render_template('add_user.html', error="Username, email, and password are required")
+
+        if not User.validate_email(email_address):
+            return render_template('add_user.html', error="Invalid email address")
 
         if User.get_by_username(username):
             return render_template('add_user.html', error="Username already exists")
 
+        if User.get_by_email(email_address):
+            return render_template('add_user.html', error="Email already exists")
+
         if len(password) < 6:
             return render_template('add_user.html', error="Password must be at least 6 characters")
 
-        if role not in ['admin', 'editor']:
-            role = 'editor'
+        if role not in ['admin', 'editor', 'reader']:
+            role = 'reader'
 
         # Create user
-        new_user = User(username=username, role=role)
+        new_user = User(username=username, email_address=email_address, role=role)
         new_user.set_password(password)
 
         from trellis.models import db
@@ -369,11 +471,30 @@ def edit_user(user_id):
         return "User not found", 404
 
     if request.method == 'POST':
-        role = request.form.get('role', 'editor')
+        email_address = request.form.get('email_address', '').strip()
+        email_verified = request.form.get('email_verified') == 'on'
+        role = request.form.get('role', 'reader')
         is_active = request.form.get('is_active') == 'on'
         new_password = request.form.get('new_password')
 
-        if role in ['admin', 'editor']:
+        # Handle email address update
+        if email_address:
+            # Validate email format
+            if not User.validate_email(email_address):
+                return render_template('edit_user.html', user=user, error="Invalid email address")
+            # Check for duplicate email (excluding current user)
+            existing = User.get_by_email(email_address)
+            if existing and existing.id != user.id:
+                return render_template('edit_user.html', user=user, error="Email already exists")
+            user.email_address = email_address
+        else:
+            # Allow clearing email address
+            user.email_address = None
+
+        # Update email verification status
+        user.email_verified = 'Y' if email_verified else 'N'
+
+        if role in ['admin', 'editor', 'reader']:
             user.role = role
 
         user.is_active = is_active
@@ -415,7 +536,7 @@ def delete_user(user_id):
 # ============================================================================
 
 @editor_bp.route('/')
-@login_required
+@editor_required
 def dashboard():
     """Show all gardens and their articles"""
     garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
@@ -425,7 +546,7 @@ def dashboard():
     gardens_with_articles = []
     for garden in gardens:
         garden_path = Path(current_app.config['CONTENT_DIR']) / garden['slug']
-        handler = MarkdownHandler(garden_path)
+        handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
         articles = handler.list_articles()
         gardens_with_articles.append({
             'garden': garden,
@@ -435,7 +556,7 @@ def dashboard():
     return render_template('editor_dashboard.html', gardens=gardens_with_articles)
 
 @editor_bp.route('/edit/<garden_slug>/<path:article_path>')
-@login_required
+@editor_required
 def edit(garden_slug, article_path):
     """Edit a specific article (supports nested paths)"""
     garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
@@ -445,7 +566,7 @@ def edit(garden_slug, article_path):
         return "Garden not found", 404
 
     garden_path = Path(current_app.config['CONTENT_DIR']) / garden_slug
-    handler = MarkdownHandler(garden_path)
+    handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
     articles = handler.list_articles()
     article = next((a for a in articles if handler.generate_slug(a['filename']) == article_path), None)
 
@@ -455,7 +576,7 @@ def edit(garden_slug, article_path):
     return render_template('editor.html', article=article, garden=garden)
 
 @editor_bp.route('/save', methods=['POST'])
-@login_required
+@editor_required
 def save():
     data = request.json
     filename = data.get('filename')
@@ -468,7 +589,7 @@ def save():
 
     # Save file
     garden_path = Path(current_app.config['CONTENT_DIR']) / garden_slug if garden_slug else current_app.config['CONTENT_DIR']
-    handler = MarkdownHandler(garden_path)
+    handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
 
     # For .page directories, save to page.md inside the directory
     # filename might be "project.page" -> save to "project.page/page.md"
@@ -506,9 +627,9 @@ def save():
     return jsonify({'success': True, 'metadata': metadata})
 
 @editor_bp.route('/preview', methods=['POST'])
-@login_required
+@editor_required
 def preview():
     content = request.json.get('content', '')
-    handler = MarkdownHandler(current_app.config['CONTENT_DIR'])
+    handler = MarkdownHandler(current_app.config['CONTENT_DIR'], current_app.config.get('DATA_DIR'))
     html = handler.md.convert(content)
     return jsonify({'html': html})

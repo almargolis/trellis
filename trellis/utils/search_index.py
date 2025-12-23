@@ -187,7 +187,7 @@ class SearchIndex:
             gardens = garden_manager.get_gardens()
 
             # Index root-level pages
-            handler = MarkdownHandler(content_path)
+            handler = MarkdownHandler(content_path, self.data_dir)
             for item in handler.list_items():
                 if item.get('type') in ['markdown', 'page']:
                     url = f"/page/{item['slug']}"
@@ -204,7 +204,7 @@ class SearchIndex:
             # Index each garden
             for garden in gardens:
                 garden_path = content_path / garden['slug']
-                handler = MarkdownHandler(garden_path)
+                handler = MarkdownHandler(garden_path, self.data_dir)
 
                 # Recursively get all articles
                 for article in handler.list_articles(recursive=True):
