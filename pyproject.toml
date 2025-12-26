@@ -44,6 +44,7 @@ dev = [
 
 [project.scripts]
 trellis-index = "trellis.cli:index_content"
+trellis-index-update = "trellis.cli:update_indexes"
 trellis-init-db = "trellis.cli:init_db"
 trellis-search = "trellis.cli:rebuild_search"
 

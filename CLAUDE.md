@@ -128,6 +128,158 @@ status: published
 - Include files: Use `{{include: filename}}` syntax to include content from other files
 - Clean URLs: `.page` extension is stripped (e.g., `/garden/projects/article`)
 
+### Index Management
+
+Trellis maintains two indexes that must be kept in sync with content changes:
+1. **Search Index** (Whoosh): Full-text search across all content
+2. **Content Index** (trellis_content.db): Metadata cache for wiki-links and queries
+
+**Automatic Updates (Default):**
+- When content is saved/created via the web editor, indexes update immediately
+- Single-file updates are fast (milliseconds)
+- No manual intervention needed
+
+**Deferred Updates (Optional):**
+For high-traffic sites with multiple concurrent editors:
+```bash
+# Enable deferred mode via environment variable
+export TRELLIS_DEFERRED_INDEXING=true
+
+# Set up cron job to rebuild periodically (e.g., every 5 minutes)
+*/5 * * * * cd /var/www/trellis && trellis-index-update
+```
+
+**Manual Commands:**
+```bash
+# Check if rebuild needed and rebuild if dirty
+trellis-index-update
+
+# Force rebuild regardless of dirty flag
+trellis-index-update --force
+
+# Rebuild search index only
+trellis-search --rebuild
+
+# Rebuild content index only
+trellis-index --clear
+
+# Show statistics
+trellis-search --stats
+trellis-index --stats
+```
+
+**How It Works:**
+- `IndexManager` class coordinates both indexes
+- Immediate mode: Updates happen after each save/create
+- Deferred mode: Sets `.index_dirty` flag, cron job checks and rebuilds
+- Incremental updates: Only changed files are re-indexed
+
+### Backup Strategies
+
+**For Text Content (Markdown, YAML, Code):**
+Git version control is recommended and enabled by default:
+```bash
+# Auto-commits happen on every save via GitHandler
+# Configure git repository path
+export GITLAB_REPO_PATH=/path/to/content
+
+# Manual git operations
+cd /path/to/content
+git log                    # View history
+git push origin main       # Push to remote
+```
+
+**For Binary Content (Images, PDFs):**
+Git is not ideal for large binary files. Consider:
+
+1. **Git with LFS** (for moderate binary content):
+```bash
+cd /path/to/content
+git lfs install
+git lfs track "*.png" "*.jpg" "*.pdf"
+git add .gitattributes
+```
+
+2. **Rsync for Full Backups** (recommended for mixed content):
+```bash
+# Daily backup to external location
+rsync -av --delete /var/www/trellis_data/ /backup/trellis_data/
+
+# Exclude git repo from binary backups
+rsync -av --delete --exclude='.git' /var/www/trellis_data/content/ /backup/content/
+```
+
+3. **Hybrid Approach** (best for most sites):
+- Keep git for text content version control
+- Add binary files to `.gitignore`
+- Use rsync/tar for periodic full backups
+- Consider cloud storage (S3, BackBlaze) for off-site backups
+
+**Example .gitignore for Hybrid Approach:**
+```gitignore
+# Database files (handled by rsync)
+*.db
+*.db-journal
+
+# Large binary content
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+*.zip
+*.tar.gz
+
+# Search index (rebuilt from content)
+search_index/
+
+# Keep text content in git
+!*.md
+!*.yaml
+!*.yml
+!*.py
+!*.js
+!*.css
+!*.html
+```
+
+**Backup Script Example:**
+```bash
+#!/bin/bash
+# backup-trellis.sh
+
+DATA_DIR="/var/www/trellis_data"
+BACKUP_DIR="/backup/trellis/$(date +%Y%m%d)"
+
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+
+# Backup database
+cp "$DATA_DIR"/*.db "$BACKUP_DIR/"
+
+# Backup full content (including binaries)
+rsync -av "$DATA_DIR/content/" "$BACKUP_DIR/content/"
+
+# Commit and push text content to git
+cd "$DATA_DIR/content"
+git add -A
+git commit -m "Automated backup: $(date)"
+git push origin main
+
+# Keep last 7 days of full backups
+find /backup/trellis/ -maxdepth 1 -mtime +7 -type d -exec rm -rf {} \;
+```
+
+**Restoration:**
+```bash
+# Restore from rsync backup
+rsync -av /backup/trellis/20240115/ /var/www/trellis_data/
+
+# Rebuild indexes after restore
+trellis-search --rebuild
+trellis-index --clear
+```
+
 ### Wiki-Links for Internal Linking
 
 Trellis supports wiki-style linking for easy cross-referencing between pages:

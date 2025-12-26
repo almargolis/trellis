@@ -12,6 +12,7 @@ from werkzeug.utils import secure_filename
 from functools import wraps
 import os
 from pathlib import Path
+from datetime import datetime
 
 main_bp = Blueprint('main', __name__)
 editor_bp = Blueprint('editor', __name__, url_prefix='/editor')
@@ -555,10 +556,418 @@ def dashboard():
 
     return render_template('editor_dashboard.html', gardens=gardens_with_articles)
 
+@editor_bp.route('/browse')
+@editor_bp.route('/browse/<path:dir_path>')
+@editor_required
+def browse(dir_path=''):
+    """Browse directory contents with hierarchical navigation"""
+    content_dir = Path(current_app.config['CONTENT_DIR'])
+    current_dir = content_dir / dir_path if dir_path else content_dir
+
+    # Security: ensure we're within content_dir
+    try:
+        current_dir = current_dir.resolve()
+        if not str(current_dir).startswith(str(content_dir.resolve())):
+            return "Invalid path", 403
+    except:
+        return "Invalid path", 404
+
+    if not current_dir.exists():
+        return "Directory not found", 404
+
+    # Build breadcrumbs
+    breadcrumbs = [{'name': 'Content', 'path': ''}]
+    if dir_path:
+        parts = Path(dir_path).parts
+        for i, part in enumerate(parts):
+            path = '/'.join(parts[:i+1])
+            breadcrumbs.append({'name': part, 'path': path})
+
+    # Categorize directory contents
+    gardens = []  # Regular directories (not .page)
+    complex_pages = []  # .page directories
+    basic_content = []  # Files (.md, .yaml, etc.)
+
+    # Define editable extensions
+    editable_extensions = {'.md', '.yaml', '.yml', '.py', '.js', '.css', '.html', '.txt', '.json', '.sh', '.xml'}
+
+    try:
+        for item in sorted(current_dir.iterdir()):
+            # Skip hidden files and __pycache__
+            if item.name.startswith('.') or item.name == '__pycache__':
+                continue
+
+            if item.is_dir():
+                if item.suffix == '.page':
+                    # Complex page directory
+                    page_md = item / 'page.md'
+                    has_page_md = page_md.exists()
+                    complex_pages.append({
+                        'name': item.stem,  # Remove .page extension
+                        'full_name': item.name,
+                        'path': str(Path(dir_path) / item.name) if dir_path else item.name,
+                        'has_page_md': has_page_md
+                    })
+                else:
+                    # Regular directory (garden or subdirectory)
+                    config_path = item / 'config.yaml'
+                    has_config = config_path.exists()
+
+                    # Try to read title from config
+                    title = item.name.replace('-', ' ').replace('_', ' ').title()
+                    if has_config:
+                        try:
+                            import yaml
+                            with open(config_path) as f:
+                                config = yaml.safe_load(f)
+                                title = config.get('title', title)
+                        except:
+                            pass
+
+                    gardens.append({
+                        'name': item.name,
+                        'title': title,
+                        'path': str(Path(dir_path) / item.name) if dir_path else item.name,
+                        'has_config': has_config
+                    })
+            else:
+                # File
+                is_editable = item.suffix in editable_extensions
+                file_type = item.suffix[1:] if item.suffix else 'file'
+
+                basic_content.append({
+                    'name': item.name,
+                    'path': str(Path(dir_path) / item.name) if dir_path else item.name,
+                    'is_editable': is_editable,
+                    'file_type': file_type,
+                    'size': item.stat().st_size
+                })
+
+    except Exception as e:
+        return f"Error reading directory: {e}", 500
+
+    return render_template('editor_browse.html',
+                          breadcrumbs=breadcrumbs,
+                          current_path=dir_path,
+                          gardens=gardens,
+                          complex_pages=complex_pages,
+                          basic_content=basic_content)
+
+@editor_bp.route('/create/garden', methods=['POST'])
+@editor_required
+def create_garden():
+    """Create a new garden (directory with config.yaml)"""
+    import yaml
+    name = request.json.get('name', '').strip()
+    parent_path = request.json.get('parent_path', '')
+
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+
+    # Sanitize name (convert to slug)
+    slug = name.lower().replace(' ', '-').replace('_', '-')
+    slug = ''.join(c for c in slug if c.isalnum() or c == '-')
+
+    content_dir = Path(current_app.config['CONTENT_DIR'])
+    parent_dir = content_dir / parent_path if parent_path else content_dir
+    new_dir = parent_dir / slug
+
+    if new_dir.exists():
+        return jsonify({'error': f'Directory "{slug}" already exists'}), 400
+
+    try:
+        # Create directory
+        new_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create config.yaml
+        config = {
+            'title': name,
+            'description': '',
+            'created_date': datetime.now().strftime('%Y-%m-%d'),
+            'order': 999
+        }
+        config_path = new_dir / 'config.yaml'
+        with open(config_path, 'w') as f:
+            yaml.dump(config, f, default_flow_style=False)
+
+        # Git commit
+        from trellis.utils.git_handler import GitHandler
+        git = GitHandler(current_app.config.get('GITLAB_REPO_PATH', '.'))
+        git.auto_commit(str(config_path), f"Created garden: {slug}")
+
+        new_path = str(Path(parent_path) / slug) if parent_path else slug
+        return jsonify({'success': True, 'path': new_path})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@editor_bp.route('/create/page', methods=['POST'])
+@editor_required
+def create_page():
+    """Create a new complex page (.page directory with page.md)"""
+    import frontmatter
+    name = request.json.get('name', '').strip()
+    parent_path = request.json.get('parent_path', '')
+
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+
+    # Sanitize name
+    slug = name.lower().replace(' ', '-').replace('_', '-')
+    slug = ''.join(c for c in slug if c.isalnum() or c == '-')
+
+    content_dir = Path(current_app.config['CONTENT_DIR'])
+    parent_dir = content_dir / parent_path if parent_path else content_dir
+    new_dir = parent_dir / f"{slug}.page"
+
+    if new_dir.exists():
+        return jsonify({'error': f'Page "{slug}" already exists'}), 400
+
+    try:
+        # Create .page directory
+        new_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create page.md with frontmatter
+        metadata = {
+            'title': name,
+            'created_date': datetime.now().strftime('%Y-%m-%d'),
+            'published_date': datetime.now().strftime('%Y-%m-%d'),
+            'status': 'draft'
+        }
+        post = frontmatter.Post('# ' + name + '\n\nYour content here.', **metadata)
+
+        page_md = new_dir / 'page.md'
+        with open(page_md, 'w') as f:
+            f.write(frontmatter.dumps(post))
+
+        # Git commit
+        from trellis.utils.git_handler import GitHandler
+        git = GitHandler(current_app.config.get('GITLAB_REPO_PATH', '.'))
+        git.auto_commit(str(page_md), f"Created page: {slug}")
+
+        # Update indexes
+        from trellis.utils.index_manager import IndexManager
+        new_path = str(Path(parent_path) / f"{slug}.page") if parent_path else f"{slug}.page"
+
+        # Extract garden slug (first directory component)
+        path_parts = Path(new_path).parts
+        garden_slug = path_parts[0] if len(path_parts) > 1 else None
+
+        index_mgr = IndexManager(
+            content_dir=current_app.config['CONTENT_DIR'],
+            data_dir=current_app.config['DATA_DIR']
+        )
+        index_mgr.update_file(new_path, garden_slug)
+
+        return jsonify({'success': True, 'path': new_path})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@editor_bp.route('/create/file', methods=['POST'])
+@editor_required
+def create_file():
+    """Create a new text file"""
+    import frontmatter
+    name = request.json.get('name', '').strip()
+    extension = request.json.get('extension', '.md').strip()
+    parent_path = request.json.get('parent_path', '')
+
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+
+    # Ensure extension starts with dot
+    if not extension.startswith('.'):
+        extension = '.' + extension
+
+    # Sanitize name
+    filename = name if name.endswith(extension) else name + extension
+
+    content_dir = Path(current_app.config['CONTENT_DIR'])
+    parent_dir = content_dir / parent_path if parent_path else content_dir
+    new_file = parent_dir / filename
+
+    if new_file.exists():
+        return jsonify({'error': f'File "{filename}" already exists'}), 400
+
+    try:
+        # Create file with appropriate content
+        if extension == '.md':
+            # Markdown with frontmatter
+            metadata = {
+                'title': name,
+                'created_date': datetime.now().strftime('%Y-%m-%d'),
+                'published_date': datetime.now().strftime('%Y-%m-%d'),
+                'status': 'draft'
+            }
+            post = frontmatter.Post(f'# {name}\n\nYour content here.', **metadata)
+            content = frontmatter.dumps(post)
+        elif extension in ['.yaml', '.yml']:
+            # YAML template
+            content = f"# {name}\n# Created: {datetime.now().strftime('%Y-%m-%d')}\n\n"
+        elif extension == '.py':
+            # Python template
+            content = f'"""\n{name}\n\nCreated: {datetime.now().strftime("%Y-%m-%d")}\n"""\n\n'
+        else:
+            # Generic text file
+            content = f"# {name}\n# Created: {datetime.now().strftime('%Y-%m-%d')}\n\n"
+
+        new_file.write_text(content)
+
+        # Git commit
+        from trellis.utils.git_handler import GitHandler
+        git = GitHandler(current_app.config.get('GITLAB_REPO_PATH', '.'))
+        git.auto_commit(str(new_file), f"Created file: {filename}")
+
+        # Update indexes if markdown file
+        new_path = str(Path(parent_path) / filename) if parent_path else filename
+        if extension == '.md':
+            from trellis.utils.index_manager import IndexManager
+            # Extract garden slug (first directory component)
+            path_parts = Path(new_path).parts
+            garden_slug = path_parts[0] if len(path_parts) > 1 else None
+
+            index_mgr = IndexManager(
+                content_dir=current_app.config['CONTENT_DIR'],
+                data_dir=current_app.config['DATA_DIR']
+            )
+            index_mgr.update_file(new_path, garden_slug)
+
+        return jsonify({'success': True, 'path': new_path})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@editor_bp.route('/edit-file/<path:file_path>')
+@editor_required
+def edit_file(file_path):
+    """Edit any file (markdown, YAML, code, etc.)"""
+    content_dir = Path(current_app.config['CONTENT_DIR'])
+    full_path = content_dir / file_path
+
+    # Security check
+    try:
+        full_path = full_path.resolve()
+        if not str(full_path).startswith(str(content_dir.resolve())):
+            return "Invalid path", 403
+    except:
+        return "Invalid path", 404
+
+    if not full_path.exists():
+        return "File not found", 404
+
+    if not full_path.is_file():
+        return "Path is not a file", 400
+
+    # Read file content
+    try:
+        with open(full_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except Exception as e:
+        return f"Error reading file: {e}", 500
+
+    # Determine file type and editor mode
+    extension = full_path.suffix
+    editor_mode = {
+        '.md': 'markdown',
+        '.yaml': 'yaml',
+        '.yml': 'yaml',
+        '.py': 'python',
+        '.js': 'javascript',
+        '.json': 'json',
+        '.html': 'html',
+        '.css': 'css',
+        '.xml': 'xml',
+        '.sh': 'shell',
+    }.get(extension, 'text')
+
+    # For markdown, parse frontmatter
+    metadata = {}
+    raw_content = content
+    if extension == '.md':
+        try:
+            import frontmatter
+            post = frontmatter.loads(content)
+            metadata = post.metadata
+            raw_content = post.content
+        except:
+            pass
+
+    # Build breadcrumbs
+    breadcrumbs = [{'name': 'Content', 'path': ''}]
+    path_parts = Path(file_path).parts
+
+    # Add directory breadcrumbs
+    for i in range(len(path_parts) - 1):  # Exclude the filename
+        path = '/'.join(path_parts[:i+1])
+        breadcrumbs.append({'name': path_parts[i], 'path': path})
+
+    # Add filename as current (non-clickable)
+    breadcrumbs.append({'name': full_path.name, 'path': None})
+
+    return render_template('editor_edit_file.html',
+                          file_path=file_path,
+                          filename=full_path.name,
+                          content=content,
+                          raw_content=raw_content,
+                          metadata=metadata,
+                          editor_mode=editor_mode,
+                          is_markdown=extension == '.md',
+                          breadcrumbs=breadcrumbs)
+
+@editor_bp.route('/save-file', methods=['POST'])
+@editor_required
+def save_file():
+    """Save any file type"""
+    file_path = request.json.get('file_path', '')
+    content = request.json.get('content', '')
+
+    if not file_path:
+        return jsonify({'error': 'File path is required'}), 400
+
+    content_dir = Path(current_app.config['CONTENT_DIR'])
+    full_path = content_dir / file_path
+
+    # Security check
+    try:
+        full_path = full_path.resolve()
+        if not str(full_path).startswith(str(content_dir.resolve())):
+            return jsonify({'error': 'Invalid path'}), 403
+    except:
+        return jsonify({'error': 'Invalid path'}), 404
+
+    try:
+        # Write file
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+        # Git commit
+        from trellis.utils.git_handler import GitHandler
+        git = GitHandler(current_app.config.get('GITLAB_REPO_PATH', '.'))
+        git.auto_commit(str(full_path), f"Updated: {full_path.name}")
+
+        # Update indexes if markdown file
+        if full_path.suffix == '.md':
+            from trellis.utils.index_manager import IndexManager
+            # Extract garden slug (first directory component)
+            path_parts = Path(file_path).parts
+            garden_slug = path_parts[0] if len(path_parts) > 1 else None
+
+            index_mgr = IndexManager(
+                content_dir=current_app.config['CONTENT_DIR'],
+                data_dir=current_app.config['DATA_DIR']
+            )
+            index_mgr.update_file(file_path, garden_slug)
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @editor_bp.route('/edit/<garden_slug>/<path:article_path>')
 @editor_required
 def edit(garden_slug, article_path):
-    """Edit a specific article (supports nested paths)"""
+    """Edit a specific article (supports nested paths) - legacy route"""
     garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
     garden = garden_manager.get_garden_or_404(garden_slug)
 

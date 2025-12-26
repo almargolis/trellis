@@ -248,5 +248,64 @@ def rebuild_search():
     return 0
 
 
+def update_indexes():
+    """CLI entry point for trellis-index-update command.
+
+    Checks if indexes need updating (dirty flag) and rebuilds if necessary.
+    Perfect for cron jobs.
+    """
+    parser = argparse.ArgumentParser(
+        description='Check and update Trellis indexes if needed'
+    )
+    parser.add_argument('--force', action='store_true',
+                        help='Force rebuild even if not dirty')
+    parser.add_argument('--data-dir', type=str,
+                        help='Data directory (default: from DATA_DIR env)')
+    parser.add_argument('--content-dir', type=str,
+                        help='Content directory (default: from CONTENT_DIR env)')
+    args = parser.parse_args()
+
+    # Get paths from args or environment
+    data_dir = args.data_dir or os.environ.get('DATA_DIR', '')
+    content_dir = args.content_dir or os.environ.get('CONTENT_DIR', '')
+
+    if not data_dir:
+        print("Error: DATA_DIR not set. Use --data-dir or set DATA_DIR environment variable.")
+        return 1
+
+    if not content_dir:
+        content_dir = os.path.join(data_dir, 'content')
+
+    from trellis.utils.index_manager import IndexManager
+
+    index_mgr = IndexManager(content_dir, data_dir, deferred=True)
+
+    if args.force:
+        print("Forcing index rebuild...")
+        index_mgr.set_dirty_flag()
+
+    if not index_mgr.is_dirty():
+        print("Indexes are up to date. No rebuild needed.")
+        return 0
+
+    print("Indexes need updating. Rebuilding...")
+    print(f"Content directory: {content_dir}")
+    print(f"Data directory: {data_dir}")
+    print()
+
+    try:
+        result = index_mgr.rebuild_if_dirty()
+        if result['rebuilt']:
+            print(f"✓ Successfully rebuilt indexes")
+            print(f"  Documents indexed: {result['count']}")
+            return 0
+        else:
+            print("No rebuild needed")
+            return 0
+    except Exception as e:
+        print(f"✗ Error rebuilding indexes: {e}")
+        return 1
+
+
 if __name__ == '__main__':
     index_content()

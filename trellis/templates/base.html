@@ -25,7 +25,7 @@
                 {% endif %}
                 {% if current_user.is_authenticated %}
                     {% if current_user.is_editor() %}
-                        <a href="{{ url_for('editor.dashboard') }}">Editor</a>
+                        <a href="{{ url_for('editor.browse') }}">Editor</a>
                     {% endif %}
                     {% if current_user.is_admin() %}
                         <a href="{{ url_for('auth.list_users') }}">Users</a>
@@ -56,6 +56,42 @@
             {% endif %}
         </div>
     </footer>
+
+    <script>
+        // Auto-open external links in new tabs
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentDomain = window.location.hostname;
+
+            // Find all links in the main content area
+            const contentLinks = document.querySelectorAll('main a, .article-content a');
+
+            contentLinks.forEach(link => {
+                const href = link.getAttribute('href');
+
+                // Skip if no href or it's an anchor link
+                if (!href || href.startsWith('#')) {
+                    return;
+                }
+
+                // Check if it's an external link
+                const isExternal = href.startsWith('http://') || href.startsWith('https://');
+
+                if (isExternal) {
+                    try {
+                        const linkDomain = new URL(href).hostname;
+
+                        // If domain doesn't match current domain, open in new tab
+                        if (linkDomain !== currentDomain) {
+                            link.setAttribute('target', '_blank');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                        }
+                    } catch (e) {
+                        // Invalid URL, skip
+                    }
+                }
+            });
+        });
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

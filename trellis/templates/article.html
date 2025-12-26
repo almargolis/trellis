@@ -7,6 +7,20 @@
     <header class="article-header">
         <h1>{{ article.metadata.title }}</h1>
 
+        <!-- Breadcrumbs -->
+        {% if breadcrumbs %}
+        <nav class="article-breadcrumbs">
+            {% for name, url in breadcrumbs %}
+                {% if loop.last %}
+                    <span class="breadcrumb-current">{{ name }}</span>
+                {% else %}
+                    <a href="{{ url }}" class="breadcrumb-link">{{ name }}</a>
+                    <span class="breadcrumb-sep">/</span>
+                {% endif %}
+            {% endfor %}
+        </nav>
+        {% endif %}
+
         <div class="article-dates">
             <div class="date-group">
                 <span class="date-label">Created</span>

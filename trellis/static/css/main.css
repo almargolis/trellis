@@ -262,6 +262,37 @@ main {
 }
 
 /* ============================================================================
+   Breadcrumbs
+   ============================================================================ */
+
+.article-breadcrumbs {
+    margin: 1rem 0 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.breadcrumb-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+    color: var(--secondary-color);
+    text-decoration: underline;
+}
+
+.breadcrumb-sep {
+    margin: 0 0.5rem;
+    color: var(--text-light);
+}
+
+.breadcrumb-current {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+/* ============================================================================
    Full Article View
    ============================================================================ */
 

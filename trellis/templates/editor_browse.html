@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block title %}Content Browser - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="editor-browse">
+    <div class="browse-header">
+        <h1>Content Browser</h1>
+
+        <!-- Breadcrumbs -->
+        <nav class="breadcrumbs">
+            {% for crumb in breadcrumbs %}
+                {% if loop.last %}
+                    <span class="breadcrumb-current">{{ crumb.name }}</span>
+                {% else %}
+                    <a href="{% if crumb.path %}{{ url_for('editor.browse', dir_path=crumb.path) }}{% else %}{{ url_for('editor.browse') }}{% endif %}" class="breadcrumb-link">{{ crumb.name }}</a>
+                    <span class="breadcrumb-sep">/</span>
+                {% endif %}
+            {% endfor %}
+        </nav>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="showCreateModal('garden')">+ New Garden</button>
+            <button class="btn btn-primary" onclick="showCreateModal('page')">+ New Complex Page</button>
+            <button class="btn btn-primary" onclick="showCreateModal('file')">+ New Text File</button>
+        </div>
+    </div>
+
+    <!-- Gardens Section -->
+    {% if gardens %}
+    <section class="content-section">
+        <h2>Gardens</h2>
+        <div class="item-grid">
+            {% for garden in gardens %}
+            <div class="item-card directory-item">
+                <div class="item-icon">📁</div>
+                <div class="item-details">
+                    <a href="{{ url_for('editor.browse', dir_path=garden.path) }}" class="item-name">
+                        {{ garden.title }}
+                    </a>
+                    <div class="item-meta">
+                        <span class="item-type">Directory</span>
+                        {% if garden.has_config %}
+                        <span class="item-badge">✓ config.yaml</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="item-actions">
+                    {% if garden.has_config %}
+                    <a href="{{ url_for('editor.edit_file', file_path=garden.path + '/config.yaml') }}" class="btn btn-sm">Edit Config</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Complex Pages Section -->
+    {% if complex_pages %}
+    <section class="content-section">
+        <h2>Complex Pages</h2>
+        <div class="item-grid">
+            {% for page in complex_pages %}
+            <div class="item-card page-item">
+                <div class="item-icon">📄</div>
+                <div class="item-details">
+                    <a href="{{ url_for('editor.browse', dir_path=page.path) }}" class="item-name">
+                        {{ page.name }}
+                    </a>
+                    <div class="item-meta">
+                        <span class="item-type">.page directory</span>
+                        {% if not page.has_page_md %}
+                        <span class="item-badge warning">⚠ Missing page.md</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="item-actions">
+                    {% if page.has_page_md %}
+                    <a href="{{ url_for('editor.edit_file', file_path=page.path + '/page.md') }}" class="btn btn-sm btn-edit">Edit</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Basic Content Section -->
+    {% if basic_content %}
+    <section class="content-section">
+        <h2>Files</h2>
+        <div class="item-list">
+            {% for file in basic_content %}
+            <div class="item-row">
+                <div class="item-icon">
+                    {% if file.file_type == 'md' %}📝
+                    {% elif file.file_type in ['yaml', 'yml'] %}⚙️
+                    {% elif file.file_type == 'py' %}🐍
+                    {% elif file.file_type == 'js' %}📜
+                    {% elif file.file_type in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️
+                    {% elif file.file_type == 'pdf' %}📕
+                    {% else %}📄
+                    {% endif %}
+                </div>
+                <div class="item-details">
+                    <span class="item-name">{{ file.name }}</span>
+                    <span class="item-meta">
+                        <span class="item-type">{{ file.file_type }}</span>
+                        <span class="item-size">{{ (file.size / 1024)|round(1) }} KB</span>
+                    </span>
+                </div>
+                <div class="item-actions">
+                    {% if file.is_editable %}
+                    <a href="{{ url_for('editor.edit_file', file_path=file.path) }}" class="btn btn-sm btn-edit">Edit</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if not gardens and not complex_pages and not basic_content %}
+    <div class="empty-directory">
+        <p>This directory is empty.</p>
+        <p>Use the buttons above to create content.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Create Modals -->
+<div id="createModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3 id="modalTitle">Create New</h3>
+        <form id="createForm" onsubmit="handleCreate(event); return false;">
+            <div class="form-group">
+                <label for="createName">Name:</label>
+                <input type="text" id="createName" class="form-control" required>
+            </div>
+            <div class="form-group" id="extensionGroup" style="display:none;">
+                <label for="createExtension">Extension:</label>
+                <select id="createExtension" class="form-control">
+                    <option value=".md">Markdown (.md)</option>
+                    <option value=".yaml">YAML (.yaml)</option>
+                    <option value=".py">Python (.py)</option>
+                    <option value=".js">JavaScript (.js)</option>
+                    <option value=".css">CSS (.css)</option>
+                    <option value=".html">HTML (.html)</option>
+                    <option value=".txt">Text (.txt)</option>
+                    <option value=".json">JSON (.json)</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <button type="button" class="btn btn-secondary" onclick="hideCreateModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.editor-browse {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.browse-header {
+    margin-bottom: 2rem;
+}
+
+.breadcrumbs {
+    margin: 1rem 0;
+    font-size: 0.95rem;
+    color: var(--text-light);
+}
+
+.breadcrumb-link {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-sep {
+    margin: 0 0.5rem;
+}
+
+.breadcrumb-current {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.content-section {
+    margin-bottom: 3rem;
+}
+
+.content-section h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.item-card {
+    background: var(--surface-color);
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    gap: 1rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.item-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.item-details {
+    flex-grow: 1;
+}
+
+.item-name {
+    display: block;
+    font-weight: 600;
+    color: var(--text-color);
+    text-decoration: none;
+    margin-bottom: 0.25rem;
+}
+
+.item-name:hover {
+    color: var(--primary-color);
+}
+
+.item-meta {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.item-badge {
+    background: var(--primary-light);
+    color: var(--primary-color);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+.item-badge.warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.item-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.item-row {
+    background: var(--surface-color);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.item-row .item-icon {
+    font-size: 1.5rem;
+}
+
+.item-row .item-details {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-row .item-name {
+    font-weight: 500;
+    margin: 0;
+}
+
+.item-row .item-meta {
+    gap: 1rem;
+}
+
+.item-size {
+    color: var(--text-light);
+    font-size: 0.85rem;
+}
+
+.empty-directory {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-light);
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-content h3 {
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.btn-edit {
+    background: var(--primary-color);
+    color: white;
+}
+</style>
+
+<script>
+let currentCreateType = '';
+const currentPath = '{{ current_path }}';
+
+function showCreateModal(type) {
+    currentCreateType = type;
+    const modal = document.getElementById('createModal');
+    const title = document.getElementById('modalTitle');
+    const extensionGroup = document.getElementById('extensionGroup');
+
+    if (type === 'garden') {
+        title.textContent = 'Create New Garden';
+        extensionGroup.style.display = 'none';
+    } else if (type === 'page') {
+        title.textContent = 'Create New Complex Page';
+        extensionGroup.style.display = 'none';
+    } else if (type === 'file') {
+        title.textContent = 'Create New Text File';
+        extensionGroup.style.display = 'block';
+    }
+
+    document.getElementById('createName').value = '';
+    modal.style.display = 'flex';
+}
+
+function hideCreateModal() {
+    document.getElementById('createModal').style.display = 'none';
+}
+
+async function handleCreate(event) {
+    event.preventDefault();
+
+    const name = document.getElementById('createName').value.trim();
+    const extension = document.getElementById('createExtension').value;
+
+    if (!name) {
+        alert('Name is required');
+        return;
+    }
+
+    const endpoint = `/editor/create/${currentCreateType}`;
+    const payload = {
+        name: name,
+        parent_path: currentPath
+    };
+
+    if (currentCreateType === 'file') {
+        payload.extension = extension;
+    }
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Reload to show new content
+            window.location.reload();
+        } else {
+            alert(result.error || 'Failed to create');
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        hideCreateModal();
+    }
+});
+
+// Close modal on background click
+document.getElementById('createModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'createModal') {
+        hideCreateModal();
+    }
+});
+</script>
+{% endblock %}

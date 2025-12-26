@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ filename }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="file-editor">
+    <div class="editor-header">
+        <h1>Edit File</h1>
+
+        <!-- Breadcrumbs -->
+        <nav class="breadcrumbs">
+            {% for crumb in breadcrumbs %}
+                {% if crumb.path is none %}
+                    <span class="breadcrumb-current">{{ crumb.name }}</span>
+                {% else %}
+                    <a href="{% if crumb.path %}{{ url_for('editor.browse', dir_path=crumb.path) }}{% else %}{{ url_for('editor.browse') }}{% endif %}" class="breadcrumb-link">{{ crumb.name }}</a>
+                    <span class="breadcrumb-sep">/</span>
+                {% endif %}
+            {% endfor %}
+        </nav>
+
+        <div class="editor-actions">
+            <button onclick="saveFile()" class="btn btn-primary">Save</button>
+            <button onclick="cancelEdit()" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+
+    <div class="editor-container">
+        <textarea id="fileContent" class="code-editor" spellcheck="false">{{ content }}</textarea>
+    </div>
+
+    <div id="saveStatus" class="save-status"></div>
+</div>
+
+<style>
+.file-editor {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.editor-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    flex-basis: 100%;
+}
+
+.breadcrumbs {
+    flex-basis: 100%;
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+    color: var(--text-light);
+}
+
+.breadcrumb-link {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-sep {
+    margin: 0 0.5rem;
+}
+
+.breadcrumb-current {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.editor-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.editor-container {
+    background: var(--surface-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.code-editor {
+    width: 100%;
+    min-height: 600px;
+    padding: 1.5rem;
+    border: none;
+    font-family: 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    resize: vertical;
+    tab-size: 4;
+    -moz-tab-size: 4;
+}
+
+.code-editor:focus {
+    outline: 2px solid var(--primary-color);
+}
+
+.save-status {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 500;
+    display: none;
+}
+
+.save-status.success {
+    background: #d4edda;
+    color: #155724;
+    display: block;
+}
+
+.save-status.error {
+    background: #f8d7da;
+    color: #721c24;
+    display: block;
+}
+</style>
+
+<script>
+const filePath = '{{ file_path }}';
+const textarea = document.getElementById('fileContent');
+const originalContent = textarea.value;
+let hasUnsavedChanges = false;
+
+// Track changes
+textarea.addEventListener('input', () => {
+    hasUnsavedChanges = (textarea.value !== originalContent);
+
+    // Auto-resize textarea
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.max(600, textarea.scrollHeight) + 'px';
+});
+
+// Warn before leaving with unsaved changes
+window.addEventListener('beforeunload', (e) => {
+    if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires returnValue to be set
+        return 'You have unsaved changes. Are you sure you want to leave?';
+    }
+});
+
+async function saveFile() {
+    const content = textarea.value;
+    const statusDiv = document.getElementById('saveStatus');
+
+    try {
+        const response = await fetch('/editor/save-file', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: filePath,
+                content: content
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusDiv.className = 'save-status success';
+            statusDiv.textContent = '✓ File saved successfully';
+            hasUnsavedChanges = false; // Mark as saved
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        } else {
+            statusDiv.className = 'save-status error';
+            statusDiv.textContent = '✗ Error: ' + (result.error || 'Failed to save');
+        }
+    } catch (error) {
+        statusDiv.className = 'save-status error';
+        statusDiv.textContent = '✗ Error: ' + error.message;
+    }
+}
+
+function cancelEdit() {
+    if (hasUnsavedChanges) {
+        if (confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+            history.back();
+        }
+    } else {
+        history.back();
+    }
+}
+
+// Save on Ctrl+S / Cmd+S
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveFile();
+    }
+});
+</script>
+{% endblock %}
