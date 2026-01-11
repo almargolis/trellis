@@ -1,0 +1,70 @@
+site_name: Trellis CMS
+site_description: A digital garden and hierarchical content management system
+site_author: Albert Margolis
+repo_url: https://github.com/almargolis/trellis
+repo_name: almargolis/trellis
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path:
+        - docs
+        - docs/includes
+        - /Users/almargolis/Projects/quickdev/docs_app_snippets
+      check_paths: true
+      restrict_base_path: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: getting-started/quickstart.md
+    - Installation: getting-started/installation.md
+    - First Garden: getting-started/first-garden.md
+  - Content Guide:
+    - Writing Content: content/writing.md
+    - Content Structure: content/structure.md
+    - Wiki Links: content/wiki-links.md
+    - Page Directories: content/page-directories.md
+  - Maintenance:
+    - Backup Strategy: maintenance/backup.md
+    - Search Indexing: maintenance/indexing.md
+    - Updates: maintenance/updates.md
+  - Technical Reference:
+    - Architecture: reference/architecture.md
+    - Development Setup: reference/development.md
+    - Deployment: reference/deployment.md
+    - API Reference: reference/api.md
