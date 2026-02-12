@@ -1,0 +1,5 @@
+answers:
+  qdflask:
+    enabled: true
+  qdcomments:
+    enabled: true
