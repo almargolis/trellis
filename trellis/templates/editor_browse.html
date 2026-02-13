@@ -437,8 +437,13 @@ async function handleCreate(event) {
         const result = await response.json();
 
         if (result.success) {
-            // Reload to show new content
-            window.location.reload();
+            if (currentCreateType === 'page') {
+                window.location.href = `/editor/edit-file/${result.path}/page.md`;
+            } else if (currentCreateType === 'file') {
+                window.location.href = `/editor/edit-file/${result.path}`;
+            } else {
+                window.location.href = `/editor/browse/${result.path}`;
+            }
         } else {
             alert(result.error || 'Failed to create');
         }

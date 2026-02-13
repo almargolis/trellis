@@ -1,0 +1,37 @@
+[questions.trellis.content_dpath]
+help = "Path to the root of the site content"
+conf_type = "dpath"
+
+[answers.qdflask]
+enabled = true
+roles = "admin, editor, reader"
+login_view = "auth.reader_login"
+passwordsdb_fpath = "<trellis.content_dpath>/passwords.db"
+
+[answers.qdcomments]
+enabled = true
+
+[flask]
+config_module = "trellis.config.TrellisConfig"
+
+[flask.init_function]
+module = "trellis"
+function = "init_trellis"
+priority = 5
+
+[flask.init_function.params.content_dir]
+source = "answer"
+key = "trellis.content_dpath"
+type = "string"
+
+[[flask.site_blueprints]]
+module = "trellis.routes"
+name = "main_bp"
+
+[[flask.site_blueprints]]
+module = "trellis.routes"
+name = "editor_bp"
+
+[[flask.site_blueprints]]
+module = "trellis.routes"
+name = "auth_bp"

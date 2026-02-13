@@ -36,7 +36,8 @@
                         <td>{{ article.metadata.published_date }}</td>
                         <td>{{ article.metadata.updated_date }}</td>
                         <td class="actions">
-                            <a href="{{ url_for('editor.edit', garden_slug=garden_data.garden.slug, article_path=article.slug) }}" class="btn btn-sm">Edit</a>
+                            {% set file_suffix = '/page.md' if article.is_page_dir else '' %}
+                            <a href="{{ url_for('editor.edit_file', file_path=garden_data.garden.slug + '/' + article.filename + file_suffix) }}" class="btn btn-sm">Edit</a>
                         </td>
                     </tr>
                     {% endfor %}

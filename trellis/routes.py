@@ -3,7 +3,6 @@ from flask_login import login_required, current_user, login_user, logout_user
 from trellis.models import User
 from trellis.models.content_index import ContentIndex
 from trellis.utils.markdown_handler import MarkdownHandler
-from trellis.utils.date_manager import DateManager
 from trellis.utils.git_handler import GitHandler
 from trellis.utils.garden_manager import GardenManager
 from trellis.utils.search_index import SearchIndex
@@ -17,6 +16,15 @@ from datetime import datetime
 main_bp = Blueprint('main', __name__)
 editor_bp = Blueprint('editor', __name__, url_prefix='/editor')
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+
+@main_bp.app_context_processor
+def inject_site_config():
+    return {
+        'site_name': current_app.config.get('SITE_NAME', 'Trellis'),
+        'site_author': current_app.config.get('SITE_AUTHOR', ''),
+        'now': datetime.now(),
+    }
 
 # ============================================================================
 # Decorators
@@ -42,11 +50,11 @@ def editor_required(f):
 @main_bp.route('/')
 def index():
     """Show all gardens, root-level pages, and recently updated pages"""
-    garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
+    garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
     gardens = garden_manager.get_gardens()
 
     # Get root-level pages (markdown files and .page directories at content root)
-    content_path = Path(current_app.config['CONTENT_DIR'])
+    content_path = Path(current_app.config['GARDEN_DIR'])
     handler = MarkdownHandler(content_path, current_app.config.get('DATA_DIR'))
     root_items = []
     for item in handler.list_items():
@@ -68,7 +76,7 @@ def index():
 @main_bp.route('/page/<path:page_path>')
 def root_page(page_path):
     """Show a root-level page (markdown or .page directory at content root)"""
-    content_path = Path(current_app.config['CONTENT_DIR'])
+    content_path = Path(current_app.config['GARDEN_DIR'])
     handler = MarkdownHandler(content_path, current_app.config.get('DATA_DIR'))
 
     # Find the page
@@ -78,7 +86,7 @@ def root_page(page_path):
     if not article or article.get('type') not in ['markdown', 'page']:
         return "Page not found", 404
 
-    garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
+    garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
     all_gardens = garden_manager.get_gardens()
 
     breadcrumbs = [
@@ -98,7 +106,7 @@ def search():
     """Search across all content"""
     query = request.args.get('q', '').strip()
 
-    garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
+    garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
     all_gardens = garden_manager.get_gardens()
 
     results = []
@@ -120,7 +128,7 @@ def search():
 @main_bp.route('/garden/<garden_slug>')
 def garden(garden_slug):
     """Show items in a specific garden (non-recursive directory listing)"""
-    garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
+    garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
     garden = garden_manager.get_garden_or_404(garden_slug)
 
     if not garden:
@@ -130,7 +138,7 @@ def garden(garden_slug):
     all_gardens = garden_manager.get_gardens()
 
     # Get items (directories, pages, markdown files) at this level
-    garden_path = Path(current_app.config['CONTENT_DIR']) / garden_slug
+    garden_path = Path(current_app.config['GARDEN_DIR']) / garden_slug
     handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
     items = handler.list_items()
 
@@ -160,7 +168,7 @@ def article(garden_slug, article_path):
         /garden/projects/my-project -> article or page content
         /garden/projects/my-project/setup -> nested article or page
     """
-    garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
+    garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
     garden = garden_manager.get_garden_or_404(garden_slug)
 
     if not garden:
@@ -170,7 +178,7 @@ def article(garden_slug, article_path):
     all_gardens = garden_manager.get_gardens()
 
     # Check if this path refers to a content directory
-    content_dir = Path(current_app.config['CONTENT_DIR']) / garden_slug
+    content_dir = Path(current_app.config['GARDEN_DIR']) / garden_slug
     potential_dir = content_dir / article_path
 
     if potential_dir.exists() and potential_dir.is_dir() and potential_dir.suffix != '.page':
@@ -245,7 +253,7 @@ def page_asset(garden_slug, article_path, filename):
 
     # Reconstruct the .page directory path
     # article_path might be "my-project" which maps to "my-project.page"
-    garden_dir = Path(current_app.config['CONTENT_DIR']) / garden_slug
+    garden_dir = Path(current_app.config['GARDEN_DIR']) / garden_slug
 
     # Try to find the .page directory
     # Convert slug path back to file path with .page extensions
@@ -540,13 +548,13 @@ def delete_user(user_id):
 @editor_required
 def dashboard():
     """Show all gardens and their articles"""
-    garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
+    garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
     gardens = garden_manager.get_gardens()
 
     # Get articles for each garden
     gardens_with_articles = []
     for garden in gardens:
-        garden_path = Path(current_app.config['CONTENT_DIR']) / garden['slug']
+        garden_path = Path(current_app.config['GARDEN_DIR']) / garden['slug']
         handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
         articles = handler.list_articles()
         gardens_with_articles.append({
@@ -561,7 +569,7 @@ def dashboard():
 @editor_required
 def browse(dir_path=''):
     """Browse directory contents with hierarchical navigation"""
-    content_dir = Path(current_app.config['CONTENT_DIR'])
+    content_dir = Path(current_app.config['GARDEN_DIR'])
     current_dir = content_dir / dir_path if dir_path else content_dir
 
     # Security: ensure we're within content_dir
@@ -668,7 +676,7 @@ def create_garden():
     slug = name.lower().replace(' ', '-').replace('_', '-')
     slug = ''.join(c for c in slug if c.isalnum() or c == '-')
 
-    content_dir = Path(current_app.config['CONTENT_DIR'])
+    content_dir = Path(current_app.config['GARDEN_DIR'])
     parent_dir = content_dir / parent_path if parent_path else content_dir
     new_dir = parent_dir / slug
 
@@ -690,16 +698,19 @@ def create_garden():
         with open(config_path, 'w') as f:
             yaml.dump(config, f, default_flow_style=False)
 
-        # Git commit
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    # Post-creation work (non-fatal)
+    try:
         from trellis.utils.git_handler import GitHandler
         git = GitHandler(current_app.config.get('GITLAB_REPO_PATH', '.'))
         git.auto_commit(str(config_path), f"Created garden: {slug}")
-
-        new_path = str(Path(parent_path) / slug) if parent_path else slug
-        return jsonify({'success': True, 'path': new_path})
-
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Git commit failed for new garden {slug}: {e}")
+
+    new_path = str(Path(parent_path) / slug) if parent_path else slug
+    return jsonify({'success': True, 'path': new_path})
 
 @editor_bp.route('/create/page', methods=['POST'])
 @editor_required
@@ -716,7 +727,7 @@ def create_page():
     slug = name.lower().replace(' ', '-').replace('_', '-')
     slug = ''.join(c for c in slug if c.isalnum() or c == '-')
 
-    content_dir = Path(current_app.config['CONTENT_DIR'])
+    content_dir = Path(current_app.config['GARDEN_DIR'])
     parent_dir = content_dir / parent_path if parent_path else content_dir
     new_dir = parent_dir / f"{slug}.page"
 
@@ -740,29 +751,33 @@ def create_page():
         with open(page_md, 'w') as f:
             f.write(frontmatter.dumps(post))
 
-        # Git commit
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    new_path = str(Path(parent_path) / f"{slug}.page") if parent_path else f"{slug}.page"
+
+    # Post-creation work (non-fatal)
+    try:
         from trellis.utils.git_handler import GitHandler
         git = GitHandler(current_app.config.get('GITLAB_REPO_PATH', '.'))
         git.auto_commit(str(page_md), f"Created page: {slug}")
+    except Exception as e:
+        print(f"Git commit failed for new page {slug}: {e}")
 
-        # Update indexes
+    try:
         from trellis.utils.index_manager import IndexManager
-        new_path = str(Path(parent_path) / f"{slug}.page") if parent_path else f"{slug}.page"
-
-        # Extract garden slug (first directory component)
         path_parts = Path(new_path).parts
         garden_slug = path_parts[0] if len(path_parts) > 1 else None
 
         index_mgr = IndexManager(
-            content_dir=current_app.config['CONTENT_DIR'],
+            content_dir=current_app.config['GARDEN_DIR'],
             data_dir=current_app.config['DATA_DIR']
         )
         index_mgr.update_file(new_path, garden_slug)
-
-        return jsonify({'success': True, 'path': new_path})
-
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Index update failed for new page {slug}: {e}")
+
+    return jsonify({'success': True, 'path': new_path})
 
 @editor_bp.route('/create/file', methods=['POST'])
 @editor_required
@@ -783,7 +798,7 @@ def create_file():
     # Sanitize name
     filename = name if name.endswith(extension) else name + extension
 
-    content_dir = Path(current_app.config['CONTENT_DIR'])
+    content_dir = Path(current_app.config['GARDEN_DIR'])
     parent_dir = content_dir / parent_path if parent_path else content_dir
     new_file = parent_dir / filename
 
@@ -814,35 +829,40 @@ def create_file():
 
         new_file.write_text(content)
 
-        # Git commit
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    new_path = str(Path(parent_path) / filename) if parent_path else filename
+
+    # Post-creation work (non-fatal)
+    try:
         from trellis.utils.git_handler import GitHandler
         git = GitHandler(current_app.config.get('GITLAB_REPO_PATH', '.'))
         git.auto_commit(str(new_file), f"Created file: {filename}")
+    except Exception as e:
+        print(f"Git commit failed for new file {filename}: {e}")
 
-        # Update indexes if markdown file
-        new_path = str(Path(parent_path) / filename) if parent_path else filename
-        if extension == '.md':
+    if extension == '.md':
+        try:
             from trellis.utils.index_manager import IndexManager
-            # Extract garden slug (first directory component)
             path_parts = Path(new_path).parts
             garden_slug = path_parts[0] if len(path_parts) > 1 else None
 
             index_mgr = IndexManager(
-                content_dir=current_app.config['CONTENT_DIR'],
+                content_dir=current_app.config['GARDEN_DIR'],
                 data_dir=current_app.config['DATA_DIR']
             )
             index_mgr.update_file(new_path, garden_slug)
+        except Exception as e:
+            print(f"Index update failed for new file {filename}: {e}")
 
-        return jsonify({'success': True, 'path': new_path})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'success': True, 'path': new_path})
 
 @editor_bp.route('/edit-file/<path:file_path>')
 @editor_required
 def edit_file(file_path):
     """Edit any file (markdown, YAML, code, etc.)"""
-    content_dir = Path(current_app.config['CONTENT_DIR'])
+    content_dir = Path(current_app.config['GARDEN_DIR'])
     full_path = content_dir / file_path
 
     # Security check
@@ -925,7 +945,7 @@ def save_file():
     if not file_path:
         return jsonify({'error': 'File path is required'}), 400
 
-    content_dir = Path(current_app.config['CONTENT_DIR'])
+    content_dir = Path(current_app.config['GARDEN_DIR'])
     full_path = content_dir / file_path
 
     # Security check
@@ -940,105 +960,30 @@ def save_file():
         # Write file
         with open(full_path, 'w', encoding='utf-8') as f:
             f.write(content)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-        # Git commit
+    # Post-save work (non-fatal)
+    try:
         from trellis.utils.git_handler import GitHandler
         git = GitHandler(current_app.config.get('GITLAB_REPO_PATH', '.'))
         git.auto_commit(str(full_path), f"Updated: {full_path.name}")
+    except Exception as e:
+        print(f"Git commit failed for {full_path.name}: {e}")
 
-        # Update indexes if markdown file
-        if full_path.suffix == '.md':
+    if full_path.suffix == '.md':
+        try:
             from trellis.utils.index_manager import IndexManager
-            # Extract garden slug (first directory component)
             path_parts = Path(file_path).parts
             garden_slug = path_parts[0] if len(path_parts) > 1 else None
 
             index_mgr = IndexManager(
-                content_dir=current_app.config['CONTENT_DIR'],
+                content_dir=current_app.config['GARDEN_DIR'],
                 data_dir=current_app.config['DATA_DIR']
             )
             index_mgr.update_file(file_path, garden_slug)
+        except Exception as e:
+            print(f"Index update failed for {full_path.name}: {e}")
 
-        return jsonify({'success': True})
+    return jsonify({'success': True})
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@editor_bp.route('/edit/<garden_slug>/<path:article_path>')
-@editor_required
-def edit(garden_slug, article_path):
-    """Edit a specific article (supports nested paths) - legacy route"""
-    garden_manager = GardenManager(current_app.config['CONTENT_DIR'])
-    garden = garden_manager.get_garden_or_404(garden_slug)
-
-    if not garden:
-        return "Garden not found", 404
-
-    garden_path = Path(current_app.config['CONTENT_DIR']) / garden_slug
-    handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
-    articles = handler.list_articles()
-    article = next((a for a in articles if handler.generate_slug(a['filename']) == article_path), None)
-
-    if not article:
-        return "Article not found", 404
-
-    return render_template('editor.html', article=article, garden=garden)
-
-@editor_bp.route('/save', methods=['POST'])
-@editor_required
-def save():
-    data = request.json
-    filename = data.get('filename')
-    garden_slug = data.get('garden_slug')
-    metadata = data.get('metadata')
-    content = data.get('content')
-
-    # Auto-update modified date
-    metadata = DateManager.auto_update_modified(metadata)
-
-    # Save file
-    garden_path = Path(current_app.config['CONTENT_DIR']) / garden_slug if garden_slug else current_app.config['CONTENT_DIR']
-    handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
-
-    # For .page directories, save to page.md inside the directory
-    # filename might be "project.page" -> save to "project.page/page.md"
-    save_path = filename
-    if filename.endswith('.page'):
-        save_path = str(Path(filename) / 'page.md')
-    elif Path(garden_path / filename).is_dir() and (Path(garden_path / filename)).suffix == '.page':
-        save_path = str(Path(filename) / 'page.md')
-
-    handler.save_file(save_path, metadata, content)
-
-    # Update content index
-    try:
-        content_index = ContentIndex(current_app.config['DATA_DIR'])
-        slug = handler.generate_slug(filename)
-        url = f"/garden/{garden_slug}/{slug}" if garden_slug else f"/garden/{slug}"
-        source_file = os.path.join(garden_slug, filename) if garden_slug else filename
-        content_index.upsert_page(
-            url=url,
-            source_file=source_file,
-            metadata=metadata,
-            content_dir=current_app.config['CONTENT_DIR']
-        )
-    except Exception as e:
-        print(f"Error updating content index: {e}")
-
-    # Git commit
-    git_handler = GitHandler(current_app.config['GITLAB_REPO_PATH'])
-    file_path = os.path.join('content', garden_slug, save_path) if garden_slug else os.path.join('content', save_path)
-    git_handler.auto_commit(
-        file_path,
-        f"Update: {metadata.get('title', filename)}"
-    )
-
-    return jsonify({'success': True, 'metadata': metadata})
-
-@editor_bp.route('/preview', methods=['POST'])
-@editor_required
-def preview():
-    content = request.json.get('content', '')
-    handler = MarkdownHandler(current_app.config['CONTENT_DIR'], current_app.config.get('DATA_DIR'))
-    html = handler.md.convert(content)
-    return jsonify({'html': html})

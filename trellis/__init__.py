@@ -9,7 +9,21 @@ across all Flask modules (qdflask, qdcomments, trellis, etc.).
 """
 from flask import Flask
 
-__all__ = ['create_app']
+__all__ = ['create_app', 'init_trellis']
+
+
+def init_trellis(app, content_dir=''):
+    """Initialize Trellis on a Flask app.
+
+    Called by qd_create_app.py with content_dir resolved from
+    conf/trellis.toml at generation time.
+    """
+    import os
+    if content_dir:
+        app.config['CONTENT_DIR'] = content_dir
+        garden_dir = os.path.join(content_dir, 'garden')
+        app.config['GARDEN_DIR'] = garden_dir
+        os.makedirs(garden_dir, exist_ok=True)
 
 def create_app(config_class=None):
     """Create and configure the Trellis Flask application.
@@ -32,6 +46,9 @@ def create_app(config_class=None):
         app = Flask(__name__)
 
     app.config.from_object(config_class)
+
+    # Initialize Trellis (sets CONTENT_DIR/GARDEN_DIR, creates garden dir)
+    init_trellis(app, app.config.get('CONTENT_DIR', ''))
 
     # Initialize authentication (qdflask owns db and User model)
     from qdflask import init_auth
@@ -79,16 +96,6 @@ def create_app(config_class=None):
 
         # In debug mode, let Flask show the full error
         raise e
-
-    # Inject site branding into all templates
-    @app.context_processor
-    def inject_site_config():
-        from datetime import datetime
-        return {
-            'site_name': app.config.get('SITE_NAME', 'Trellis'),
-            'site_author': app.config.get('SITE_AUTHOR', ''),
-            'now': datetime.now(),
-        }
 
     # Initialize email notifications
     from qdflask.email import init_mail

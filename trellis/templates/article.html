@@ -51,7 +51,9 @@
 
     {% if current_user.is_authenticated and current_user.is_editor() %}
     <div class="admin-actions">
-        <a href="{{ url_for('editor.edit', garden_slug=garden.slug, article_path=article.slug) }}" class="btn btn-edit">Edit Article</a>
+        {% set file_suffix = '/page.md' if article.is_page_dir else '' %}
+        {% set prefix = garden.slug + '/' if garden else '' %}
+        <a href="{{ url_for('editor.edit_file', file_path=prefix + article.filename + file_suffix) }}" class="btn btn-edit">Edit Article</a>
     </div>
     {% endif %}
 </article>

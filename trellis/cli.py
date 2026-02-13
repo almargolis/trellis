@@ -38,7 +38,7 @@ def index_content():
         return 1
 
     if not content_dir:
-        content_dir = os.path.join(data_dir, 'content')
+        content_dir = os.path.join(data_dir, 'garden')
 
     if args.stats:
         _show_stats(data_dir)
@@ -221,7 +221,7 @@ def rebuild_search():
         return 1
 
     if not content_dir:
-        content_dir = os.path.join(data_dir, 'content')
+        content_dir = os.path.join(data_dir, 'garden')
 
     search_index = SearchIndex(data_dir)
 
@@ -274,7 +274,7 @@ def update_indexes():
         return 1
 
     if not content_dir:
-        content_dir = os.path.join(data_dir, 'content')
+        content_dir = os.path.join(data_dir, 'garden')
 
     from trellis.utils.index_manager import IndexManager
 
