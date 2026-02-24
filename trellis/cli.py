@@ -7,10 +7,14 @@ Command-line utilities for Trellis sites.
 import argparse
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+
+def _get_data_dir(override=None):
+    """Get data directory from override arg or conf object."""
+    if override:
+        return override
+    from qdbase.qdconf import get_conf
+    return get_conf().get('trellis.content_dpath', '')
 
 
 def index_content():
@@ -24,17 +28,16 @@ def index_content():
     parser.add_argument('--stats', action='store_true',
                         help='Show index statistics')
     parser.add_argument('--data-dir', type=str,
-                        help='Data directory (default: from DATA_DIR env)')
+                        help='Data directory (default: from conf object)')
     parser.add_argument('--content-dir', type=str,
-                        help='Content directory (default: from CONTENT_DIR env)')
+                        help='Content directory (default: same as data dir)')
     args = parser.parse_args()
 
-    # Get paths from args or environment
-    data_dir = args.data_dir or os.environ.get('DATA_DIR', '')
-    content_dir = args.content_dir or os.environ.get('CONTENT_DIR', '')
+    data_dir = _get_data_dir(args.data_dir)
+    content_dir = args.content_dir or data_dir
 
     if not data_dir:
-        print("Error: DATA_DIR not set. Use --data-dir or set DATA_DIR environment variable.")
+        print("Error: DATA_DIR not set. Use --data-dir or configure trellis.content_dpath in conf.")
         return 1
 
     if not content_dir:
@@ -207,17 +210,16 @@ def rebuild_search():
     parser.add_argument('--stats', action='store_true',
                         help='Show search index statistics')
     parser.add_argument('--data-dir', type=str,
-                        help='Data directory (default: from DATA_DIR env)')
+                        help='Data directory (default: from conf object)')
     parser.add_argument('--content-dir', type=str,
-                        help='Content directory (default: from CONTENT_DIR env)')
+                        help='Content directory (default: same as data dir)')
     args = parser.parse_args()
 
-    # Get paths from args or environment
-    data_dir = args.data_dir or os.environ.get('DATA_DIR', '')
-    content_dir = args.content_dir or os.environ.get('CONTENT_DIR', '')
+    data_dir = _get_data_dir(args.data_dir)
+    content_dir = args.content_dir or data_dir
 
     if not data_dir:
-        print("Error: DATA_DIR not set. Use --data-dir or set DATA_DIR environment variable.")
+        print("Error: DATA_DIR not set. Use --data-dir or configure trellis.content_dpath in conf.")
         return 1
 
     if not content_dir:
@@ -260,17 +262,16 @@ def update_indexes():
     parser.add_argument('--force', action='store_true',
                         help='Force rebuild even if not dirty')
     parser.add_argument('--data-dir', type=str,
-                        help='Data directory (default: from DATA_DIR env)')
+                        help='Data directory (default: from conf object)')
     parser.add_argument('--content-dir', type=str,
-                        help='Content directory (default: from CONTENT_DIR env)')
+                        help='Content directory (default: same as data dir)')
     args = parser.parse_args()
 
-    # Get paths from args or environment
-    data_dir = args.data_dir or os.environ.get('DATA_DIR', '')
-    content_dir = args.content_dir or os.environ.get('CONTENT_DIR', '')
+    data_dir = _get_data_dir(args.data_dir)
+    content_dir = args.content_dir or data_dir
 
     if not data_dir:
-        print("Error: DATA_DIR not set. Use --data-dir or set DATA_DIR environment variable.")
+        print("Error: DATA_DIR not set. Use --data-dir or configure trellis.content_dpath in conf.")
         return 1
 
     if not content_dir:

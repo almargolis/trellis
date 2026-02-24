@@ -2,21 +2,19 @@
 Trellis Configuration
 
 Default Flask configuration for Trellis digital garden CMS.
-Sites can override by creating their own config class.
+Configuration is read from conf/trellis.toml via the qdbase conf object.
 """
 import os
-from pathlib import Path
-from dotenv import load_dotenv
+from qdbase.qdconf import get_conf
 
-load_dotenv()
+_conf = get_conf()
+_data_dir = _conf.get('trellis.content_dpath', '')
 
 
 class TrellisConfig:
     """Base configuration for Trellis applications.
 
-    Sites should either:
-    1. Set environment variables (DATA_DIR, CONTENT_DIR, SECRET_KEY)
-    2. Subclass TrellisConfig and override values
+    Path configuration comes from conf/trellis.toml via get_conf().
     """
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-change-in-production'
 
@@ -24,17 +22,10 @@ class TrellisConfig:
     SITE_NAME = os.environ.get('SITE_NAME', 'Trellis')
     SITE_AUTHOR = os.environ.get('SITE_AUTHOR', '')
 
-    # Data directory - writable location for databases
-    # Must be set via environment or subclass
-    DATA_DIR = os.environ.get('DATA_DIR', '')
-
-    # Content directory - defaults to DATA_DIR/content
-    CONTENT_DIR = os.environ.get('CONTENT_DIR') or (
-        os.path.join(DATA_DIR, 'content') if DATA_DIR else ''
-    )
-
-    # Garden directory - where gardens and root-level pages live
-    GARDEN_DIR = os.path.join(CONTENT_DIR, 'garden') if CONTENT_DIR else ''
+    # Data and content directories - from conf object
+    DATA_DIR = _data_dir
+    CONTENT_DIR = _data_dir
+    GARDEN_DIR = os.path.join(_data_dir, 'garden') if _data_dir else ''
 
     # Git repository path for auto-commits
     GITLAB_REPO_PATH = os.environ.get('GITLAB_REPO_PATH', '.')

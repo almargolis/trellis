@@ -19,7 +19,14 @@ def init_trellis(app, content_dir=''):
     conf/trellis.toml at generation time.
     """
     import os
+    from qdbase.qdconf import get_conf
+
+    if not content_dir:
+        conf = get_conf()
+        content_dir = conf.get('trellis.content_dpath', '')
+
     if content_dir:
+        app.config['DATA_DIR'] = content_dir
         app.config['CONTENT_DIR'] = content_dir
         garden_dir = os.path.join(content_dir, 'garden')
         app.config['GARDEN_DIR'] = garden_dir
@@ -33,12 +40,14 @@ def create_app(config_class=None):
     """
     from trellis.config import TrellisConfig
     import os
+    from qdbase.qdconf import get_conf
 
     if config_class is None:
         config_class = TrellisConfig
 
     # Use data directory for instance path in production
-    data_dir = os.environ.get('DATA_DIR')
+    conf = get_conf()
+    data_dir = conf.get('trellis.content_dpath', '')
 
     if data_dir and os.path.isabs(data_dir):
         app = Flask(__name__, instance_path=data_dir)

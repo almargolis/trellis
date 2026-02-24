@@ -35,13 +35,18 @@ python run.py
 # Server runs on http://localhost:5000
 ```
 
-### Environment Variables
-Copy `.env.example` to `.env` and configure:
+### Configuration
+
+Trellis is always a qdstart-managed application. Path configuration comes from `conf/trellis.toml` via the `qdbase.qdconf.get_conf()` object:
+
+- `trellis.content_dpath`: Root directory for site content, databases, and indexes (required)
+
+The conf value is used to set `DATA_DIR`, `CONTENT_DIR`, and `GARDEN_DIR` in the Flask app config. No `.env` file or environment variables are needed for path configuration.
+
+Optional environment variables (for non-path settings):
 - `SECRET_KEY`: Flask secret key
 - `SITE_NAME`: Site name displayed in header/footer (defaults to `Trellis`)
 - `SITE_AUTHOR`: Author name displayed in footer (optional)
-- `DATA_DIR`: Directory for database and writable content (required)
-- `CONTENT_DIR`: Directory for markdown content (defaults to `DATA_DIR/content`)
 - `GITLAB_REPO_PATH`: Path to git repository for auto-commits (defaults to `.`)
 
 ## Architecture
@@ -89,10 +94,10 @@ The application uses a "digital garden" concept:
 
 Production uses a separate data directory structure:
 - **Repository**: `/var/www/trellis/` (read-only code)
-- **Data Directory**: `/var/www/trellis_data/` (writable database and content)
-- Database and content are stored outside git repo for write permissions
+- **Data Directory**: configured via `trellis.content_dpath` in `conf/trellis.toml` (writable database and content)
+- Database, content, and indexes are stored outside git repo for write permissions
 
-This separation is configured via `DATA_DIR` and `CONTENT_DIR` environment variables.
+This separation is configured via the conf object (`get_conf()`) which reads `conf/trellis.toml`.
 
 ## Common Tasks
 
@@ -347,8 +352,8 @@ The app auto-commits content changes to git. To enable:
 
 ### Instance Path Configuration
 The Flask app uses a custom instance path in production to ensure the database is writable:
-- `app/__init__.py:17-20` checks for `DATA_DIR` environment variable
-- If set and absolute, uses it as instance path
+- `trellis/__init__.py` `create_app()` reads `trellis.content_dpath` from the conf object
+- If set and absolute, uses it as Flask's instance path
 - This allows SQLite database to be created outside the read-only git repo
 
 ### Markdown Processing
@@ -403,6 +408,6 @@ This codebase does not currently have automated tests. When adding features:
 
 For production deployment, refer to `DEPLOYMENT.md`. Key points:
 - Use `setup_production.sh` script to configure data directory
-- Set production environment variables in `.env`
+- Configure `trellis.content_dpath` in `conf/trellis.toml`
 - Run under Apache/WSGI with `trellis.wsgi`
-- Ensure `www-data` has write permissions to `DATA_DIR`
+- Ensure `www-data` has write permissions to the content directory
