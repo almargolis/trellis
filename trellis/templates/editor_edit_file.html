@@ -211,7 +211,7 @@ async function saveAndPublish() {
     const fmMatch = content.match(/^(---\n)([\s\S]*?\n)(---)/);
     if (fmMatch) {
         const updatedFm = fmMatch[2].replace(/^(\s*status:\s*)draft\s*$/m, '$1published');
-        content = fmMatch[1] + updatedFm + fmMatch[3];
+        content = fmMatch[1] + updatedFm + fmMatch[3] + content.slice(fmMatch[0].length);
         textarea.value = content;
     }
 
