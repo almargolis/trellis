@@ -20,6 +20,9 @@
         </nav>
 
         <div class="editor-actions">
+            {% if is_markdown and metadata.get('status') == 'draft' %}
+            <button onclick="saveAndPublish()" class="btn btn-success" id="publishBtn">Save &amp; Publish</button>
+            {% endif %}
             <button onclick="saveFile()" class="btn btn-primary">Save</button>
             <button onclick="cancelEdit()" class="btn btn-secondary">Cancel</button>
         </div>
@@ -110,6 +113,17 @@
     outline: 2px solid var(--primary-color);
 }
 
+.btn-success {
+    background-color: #28a745;
+    color: white;
+    border: 1px solid #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
 .save-status {
     margin-top: 1rem;
     padding: 0.75rem;
@@ -188,6 +202,25 @@ async function saveFile() {
     } catch (error) {
         statusDiv.className = 'save-status error';
         statusDiv.textContent = '✗ Error: ' + error.message;
+    }
+}
+
+async function saveAndPublish() {
+    // Replace status: draft with status: published in YAML frontmatter
+    let content = textarea.value;
+    const fmMatch = content.match(/^(---\n)([\s\S]*?\n)(---)/);
+    if (fmMatch) {
+        const updatedFm = fmMatch[2].replace(/^(\s*status:\s*)draft\s*$/m, '$1published');
+        content = fmMatch[1] + updatedFm + fmMatch[3];
+        textarea.value = content;
+    }
+
+    await saveFile();
+
+    // Hide the publish button after save
+    const publishBtn = document.getElementById('publishBtn');
+    if (publishBtn) {
+        publishBtn.style.display = 'none';
     }
 }
 

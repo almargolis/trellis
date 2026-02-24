@@ -27,6 +27,18 @@ def inject_site_config():
     }
 
 # ============================================================================
+# Draft Visibility Helpers
+# ============================================================================
+
+def _is_draft(item):
+    """Check if a content item has draft status"""
+    return item.get('metadata', {}).get('status') == 'draft'
+
+def _can_view_drafts():
+    """Check if the current user can view draft content"""
+    return current_user.is_authenticated and current_user.is_editor()
+
+# ============================================================================
 # Decorators
 # ============================================================================
 
@@ -57,10 +69,12 @@ def index():
     content_path = Path(current_app.config['GARDEN_DIR'])
     handler = MarkdownHandler(content_path, current_app.config.get('DATA_DIR'))
     root_items = []
+    can_view = _can_view_drafts()
     for item in handler.list_items():
         # Only include pages, not directories (those are gardens)
         if item.get('type') in ['markdown', 'page']:
-            root_items.append(item)
+            if not _is_draft(item) or can_view:
+                root_items.append(item)
 
     # Get recently updated pages from content index
     recent_pages = []
@@ -84,6 +98,9 @@ def root_page(page_path):
     article = next((a for a in articles if handler.generate_slug(a['filename']) == page_path), None)
 
     if not article or article.get('type') not in ['markdown', 'page']:
+        return "Page not found", 404
+
+    if _is_draft(article) and not _can_view_drafts():
         return "Page not found", 404
 
     garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
@@ -142,6 +159,10 @@ def garden(garden_slug):
     handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
     items = handler.list_items()
 
+    # Filter out drafts for non-editors
+    if not _can_view_drafts():
+        items = [i for i in items if not _is_draft(i)]
+
     # Build breadcrumbs
     breadcrumbs = [
         ('Home', '/'),
@@ -186,6 +207,10 @@ def article(garden_slug, article_path):
         handler = MarkdownHandler(potential_dir, current_app.config.get('DATA_DIR'))
         items = handler.list_items()
 
+        # Filter out drafts for non-editors
+        if not _can_view_drafts():
+            items = [i for i in items if not _is_draft(i)]
+
         # Get config for this directory
         config = garden_manager.get_or_create_config(f"{garden_slug}/{article_path}")
 
@@ -206,6 +231,9 @@ def article(garden_slug, article_path):
     # Match article by slug (which has .page extensions stripped)
     article = next((a for a in articles if handler.generate_slug(a['filename']) == article_path), None)
     if not article:
+        return "Article not found", 404
+
+    if _is_draft(article) and not _can_view_drafts():
         return "Article not found", 404
 
     # Build breadcrumbs
