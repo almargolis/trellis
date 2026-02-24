@@ -34,14 +34,12 @@ def index_content():
     args = parser.parse_args()
 
     data_dir = _get_data_dir(args.data_dir)
-    content_dir = args.content_dir or data_dir
 
     if not data_dir:
         print("Error: DATA_DIR not set. Use --data-dir or configure trellis.content_dpath in conf.")
         return 1
 
-    if not content_dir:
-        content_dir = os.path.join(data_dir, 'garden')
+    content_dir = args.content_dir or os.path.join(data_dir, 'garden')
 
     if args.stats:
         _show_stats(data_dir)
@@ -216,14 +214,12 @@ def rebuild_search():
     args = parser.parse_args()
 
     data_dir = _get_data_dir(args.data_dir)
-    content_dir = args.content_dir or data_dir
 
     if not data_dir:
         print("Error: DATA_DIR not set. Use --data-dir or configure trellis.content_dpath in conf.")
         return 1
 
-    if not content_dir:
-        content_dir = os.path.join(data_dir, 'garden')
+    content_dir = args.content_dir or os.path.join(data_dir, 'garden')
 
     search_index = SearchIndex(data_dir)
 
@@ -268,14 +264,12 @@ def update_indexes():
     args = parser.parse_args()
 
     data_dir = _get_data_dir(args.data_dir)
-    content_dir = args.content_dir or data_dir
 
     if not data_dir:
         print("Error: DATA_DIR not set. Use --data-dir or configure trellis.content_dpath in conf.")
         return 1
 
-    if not content_dir:
-        content_dir = os.path.join(data_dir, 'garden')
+    content_dir = args.content_dir or os.path.join(data_dir, 'garden')
 
     from trellis.utils.index_manager import IndexManager
 
