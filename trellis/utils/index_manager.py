@@ -94,7 +94,9 @@ class IndexManager:
 
             # Parse the file
             handler = MarkdownHandler(self.content_dir, self.data_dir)
-            metadata, content, html = handler.parse_file(file_path)
+            result = handler.parse_file(file_path)
+            metadata = result['metadata']
+            html = result['content']
 
             # Generate URL
             if garden_slug:
@@ -120,7 +122,8 @@ class IndexManager:
                 title=metadata.get('title', ''),
                 description=metadata.get('description', ''),
                 content=html,
-                garden=garden_slug or ''
+                garden=garden_slug or '',
+                status=metadata.get('status', 'published')
             )
 
         except Exception as e:

@@ -35,6 +35,7 @@ class SearchIndex:
             description=TEXT(stored=True, analyzer=StemmingAnalyzer()),
             content=TEXT(analyzer=StemmingAnalyzer()),
             garden=STORED,
+            status=STORED,
         )
         self._index = None
 
@@ -57,7 +58,7 @@ class SearchIndex:
         clean = re.sub(r'<[^>]+>', '', html_content)
         return clean
 
-    def add_document(self, url, source_file, title, description, content, garden=None):
+    def add_document(self, url, source_file, title, description, content, garden=None, status=None):
         """Add or update a document in the search index
 
         Args:
@@ -67,6 +68,7 @@ class SearchIndex:
             description: Page description
             content: Full text content (HTML will be stripped)
             garden: Garden slug (optional)
+            status: Article status (e.g. 'published', 'draft')
         """
         try:
             ix = self._ensure_index()
@@ -82,6 +84,7 @@ class SearchIndex:
                 description=description or '',
                 content=clean_content,
                 garden=garden or '',
+                status=status or 'published',
             )
             writer.commit()
         except Exception as e:
@@ -144,6 +147,7 @@ class SearchIndex:
                         'title': hit['title'] or 'Untitled',
                         'description': hit['description'] or '',
                         'garden': hit['garden'] if 'garden' in hit else None,
+                        'status': hit['status'] if 'status' in hit else 'published',
                         'score': hit.score,
                     })
 
@@ -198,6 +202,7 @@ class SearchIndex:
                         description=item['metadata'].get('description', ''),
                         content=self._strip_html(item.get('content', '')),
                         garden='',
+                        status=item['metadata'].get('status', 'published'),
                     )
                     count += 1
 
@@ -217,6 +222,7 @@ class SearchIndex:
                             description=article['metadata'].get('description', ''),
                             content=self._strip_html(article.get('content', '')),
                             garden=garden['slug'],
+                            status=article['metadata'].get('status', 'published'),
                         )
                         count += 1
 

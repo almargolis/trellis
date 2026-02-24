@@ -135,6 +135,10 @@ def search():
         results = search_result['results']
         error = search_result['error']
 
+        # Hide drafts from non-editors
+        if not _can_view_drafts():
+            results = [r for r in results if r.get('status', 'published') != 'draft']
+
     return render_template('search.html',
                          query=query,
                          results=results,
