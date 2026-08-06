@@ -59,9 +59,28 @@ def create_app(config_class=None):
     # Initialize Trellis (sets CONTENT_DIR/GARDEN_DIR, creates garden dir)
     init_trellis(app, app.config.get('CONTENT_DIR', ''))
 
-    # Initialize authentication (qdflask owns db and User model)
-    from qdflask import init_auth
-    init_auth(app, roles=['admin', 'editor', 'reader'], login_view='auth.reader_login')
+    # Initialize data layer (qdflask owns db and User model)
+    from qdflask import init_qdflask
+    db_path = os.path.join(data_dir, 'passwords.db') if data_dir else 'passwords.db'
+    init_qdflask(app, db_path=db_path)
+
+    # Initialize Flask-Login (qdflaskauth provides login_manager with user_loader)
+    # Note: we skip init_qdflaskauth() because trellis has its own auth blueprint
+    # that would conflict with qdflaskauth's auth blueprint.
+    from qdflaskauth import login_manager, create_admin_user
+    app.config['QDFLASK_ROLES'] = ['admin', 'editor', 'reader']
+    login_manager.login_view = 'auth.reader_login'
+    login_manager.init_app(app)
+
+    # Seed admin user if no users exist
+    with app.app_context():
+        from qdflask.models import User
+        if User.query.count() == 0:
+            create_admin_user()
+            app.logger.info(
+                "Created initial admin user (admin/admin)"
+                " - change password after first login"
+            )
 
     # Initialize commenting system (shares qdflask's db)
     from qdcomments import init_comments
@@ -106,17 +125,13 @@ def create_app(config_class=None):
         # In debug mode, let Flask show the full error
         raise e
 
-    # Initialize email notifications
-    from qdflask.email import init_mail
-    init_mail(app)
-
     # Register Flask CLI commands
     @app.cli.command('send-comment-digest')
     def send_comment_digest():
         """Send daily digest of new comments to admins (run via cron at 1 PM Pacific)."""
         from datetime import datetime, timedelta
         from qdcomments.models import Comment
-        from qdflask.email import send_to_admins
+        from qdflaskemail import send_to_admins
 
         # Count comments from last 24 hours
         yesterday = datetime.utcnow() - timedelta(hours=24)

@@ -32,7 +32,10 @@ dependencies = [
     "python-frontmatter>=1.1.0",
     "Werkzeug>=3.0.0",
     "Whoosh>=2.7.4",
+    "qdbase",
     "qdflask",
+    "qdflaskauth",
+    "qdflaskemail",
     "qdcomments",
 ]
 
