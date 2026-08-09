@@ -7,6 +7,6 @@ all Flask modules share the same database instance.
 Note: qdflask owns the User model and authentication. Trellis imports and uses it.
 """
 
-from qdflask.models import db, User
+from qdflask.models import get_db, User
 
-__all__ = ['db', 'User']
+__all__ = ['get_db', 'User']

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_file
-from flask_login import login_required, current_user, login_user, logout_user
+from flask_login import login_required, current_user, login_user
 from trellis.models import User
 from trellis.models.content_index import ContentIndex
 from trellis.utils.markdown_handler import MarkdownHandler
@@ -15,7 +15,6 @@ from datetime import datetime
 
 main_bp = Blueprint('main', __name__)
 editor_bp = Blueprint('editor', __name__, url_prefix='/editor')
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 @main_bp.app_context_processor
@@ -47,7 +46,7 @@ def editor_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
-            return redirect(url_for('auth.editor_login'))
+            return redirect(url_for('editor.editor_login'))
         if not current_user.is_editor():
             return render_template('error.html',
                 error="Access Denied",
@@ -252,7 +251,7 @@ def article(garden_slug, article_path):
         content_type='article',
         content_id=content_id,
         status='p'
-    ).all()
+    )
 
     # Process comments for display
     processor = CommentContentProcessor(current_app.config.get('BLOCKED_WORDS_PATH'))
@@ -318,32 +317,10 @@ def page_asset(garden_slug, article_path, filename):
     return send_file(asset_path)
 
 # ============================================================================
-# Authentication Routes
+# Editor-specific login (trellis-specific route, not in qdflaskauth)
 # ============================================================================
 
-@auth_bp.route('/login', methods=['GET', 'POST'])
-def reader_login():
-    """Reader login - for commenting and viewing"""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-
-        user = User.get_by_username(username)
-        if user and user.is_active and user.check_password(password):
-            login_user(user)
-            user.update_last_login()
-
-            # Redirect based on next parameter or role
-            next_page = request.args.get('next')
-            if next_page:
-                return redirect(next_page)
-            return redirect(url_for('main.index'))
-
-        return render_template('reader_login.html', error="Invalid credentials"), 401
-
-    return render_template('reader_login.html')
-
-@auth_bp.route('/editor-login', methods=['GET', 'POST'])
+@editor_bp.route('/login', methods=['GET', 'POST'])
 def editor_login():
     """Editor/Admin login - for content editing"""
     if request.method == 'POST':
@@ -363,214 +340,6 @@ def editor_login():
         return render_template('editor_login.html', error="Invalid credentials"), 401
 
     return render_template('editor_login.html')
-
-@auth_bp.route('/register', methods=['GET', 'POST'])
-def register():
-    """Reader registration - create account for commenting"""
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        email_address = request.form.get('email_address', '').strip()
-        password = request.form.get('password', '')
-        password_confirm = request.form.get('password_confirm', '')
-
-        # Preserve form data for error cases
-        form_data = {
-            'username': username,
-            'email_address': email_address
-        }
-
-        # Validation
-        if not username or not email_address or not password:
-            return render_template('register.html', error="All fields are required", form=form_data)
-
-        if password != password_confirm:
-            return render_template('register.html', error="Passwords do not match", form=form_data)
-
-        if len(password) < 6:
-            return render_template('register.html', error="Password must be at least 6 characters", form=form_data)
-
-        if not User.validate_email(email_address):
-            return render_template('register.html', error="Invalid email address", form=form_data)
-
-        if User.get_by_username(username):
-            return render_template('register.html', error="Username already exists", form=form_data)
-
-        if User.get_by_email(email_address):
-            return render_template('register.html', error="Email already registered", form=form_data)
-
-        # Create reader account
-        new_user = User(username=username, email_address=email_address, role='reader')
-        new_user.set_password(password)
-
-        from trellis.models import db
-        db.session.add(new_user)
-        db.session.commit()
-
-        # Auto-login after registration
-        login_user(new_user)
-        new_user.update_last_login()
-
-        return redirect(url_for('main.index'))
-
-    return render_template('register.html', form={})
-
-@auth_bp.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('main.index'))
-
-@auth_bp.route('/change-password', methods=['GET', 'POST'])
-@login_required
-def change_password():
-    if request.method == 'POST':
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-
-        if not current_user.check_password(current_password):
-            return render_template('change_password.html', error="Current password is incorrect")
-
-        if new_password != confirm_password:
-            return render_template('change_password.html', error="New passwords do not match")
-
-        if len(new_password) < 6:
-            return render_template('change_password.html', error="Password must be at least 6 characters")
-
-        current_user.set_password(new_password)
-        from trellis.models import db
-        db.session.commit()
-
-        return render_template('change_password.html', success="Password changed successfully")
-
-    return render_template('change_password.html')
-
-# ============================================================================
-# User Management Routes (Admin Only)
-# ============================================================================
-
-@auth_bp.route('/users')
-@login_required
-def list_users():
-    if not current_user.is_admin():
-        return "Access denied", 403
-
-    users = User.query.all()
-    return render_template('user_management.html', users=users)
-
-@auth_bp.route('/users/add', methods=['GET', 'POST'])
-@login_required
-def add_user():
-    if not current_user.is_admin():
-        return "Access denied", 403
-
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email_address = request.form.get('email_address')
-        password = request.form.get('password')
-        role = request.form.get('role', 'editor')
-
-        # Validation
-        if not username or not password or not email_address:
-            return render_template('add_user.html', error="Username, email, and password are required")
-
-        if not User.validate_email(email_address):
-            return render_template('add_user.html', error="Invalid email address")
-
-        if User.get_by_username(username):
-            return render_template('add_user.html', error="Username already exists")
-
-        if User.get_by_email(email_address):
-            return render_template('add_user.html', error="Email already exists")
-
-        if len(password) < 6:
-            return render_template('add_user.html', error="Password must be at least 6 characters")
-
-        if role not in ['admin', 'editor', 'reader']:
-            role = 'reader'
-
-        # Create user
-        new_user = User(username=username, email_address=email_address, role=role)
-        new_user.set_password(password)
-
-        from trellis.models import db
-        db.session.add(new_user)
-        db.session.commit()
-
-        return redirect(url_for('auth.list_users'))
-
-    return render_template('add_user.html')
-
-@auth_bp.route('/users/edit/<int:user_id>', methods=['GET', 'POST'])
-@login_required
-def edit_user(user_id):
-    if not current_user.is_admin():
-        return "Access denied", 403
-
-    user = User.get(user_id)
-    if not user:
-        return "User not found", 404
-
-    if request.method == 'POST':
-        email_address = request.form.get('email_address', '').strip()
-        email_verified = request.form.get('email_verified') == 'on'
-        role = request.form.get('role', 'reader')
-        is_active = request.form.get('is_active') == 'on'
-        new_password = request.form.get('new_password')
-
-        # Handle email address update
-        if email_address:
-            # Validate email format
-            if not User.validate_email(email_address):
-                return render_template('edit_user.html', user=user, error="Invalid email address")
-            # Check for duplicate email (excluding current user)
-            existing = User.get_by_email(email_address)
-            if existing and existing.id != user.id:
-                return render_template('edit_user.html', user=user, error="Email already exists")
-            user.email_address = email_address
-        else:
-            # Allow clearing email address
-            user.email_address = None
-
-        # Update email verification status
-        user.email_verified = 'Y' if email_verified else 'N'
-
-        if role in ['admin', 'editor', 'reader']:
-            user.role = role
-
-        user.is_active = is_active
-
-        if new_password:
-            if len(new_password) < 6:
-                return render_template('edit_user.html', user=user, error="Password must be at least 6 characters")
-            user.set_password(new_password)
-
-        from trellis.models import db
-        db.session.commit()
-
-        return redirect(url_for('auth.list_users'))
-
-    return render_template('edit_user.html', user=user)
-
-@auth_bp.route('/users/delete/<int:user_id>', methods=['POST'])
-@login_required
-def delete_user(user_id):
-    if not current_user.is_admin():
-        return "Access denied", 403
-
-    # Prevent deleting yourself
-    if user_id == current_user.id:
-        return "Cannot delete your own account", 400
-
-    user = User.get(user_id)
-    if not user:
-        return "User not found", 404
-
-    from app.models import db
-    db.session.delete(user)
-    db.session.commit()
-
-    return redirect(url_for('auth.list_users'))
 
 # ============================================================================
 # Editor Routes
@@ -1018,4 +787,3 @@ def save_file():
             print(f"Index update failed for {full_path.name}: {e}")
 
     return jsonify({'success': True})
-

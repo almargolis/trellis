@@ -64,23 +64,14 @@ def create_app(config_class=None):
     db_path = os.path.join(data_dir, 'passwords.db') if data_dir else 'passwords.db'
     init_qdflask(app, db_path=db_path)
 
-    # Initialize Flask-Login (qdflaskauth provides login_manager with user_loader)
-    # Note: we skip init_qdflaskauth() because trellis has its own auth blueprint
-    # that would conflict with qdflaskauth's auth blueprint.
-    from qdflaskauth import login_manager, create_admin_user
-    app.config['QDFLASK_ROLES'] = ['admin', 'editor', 'reader']
-    login_manager.login_view = 'auth.reader_login'
-    login_manager.init_app(app)
-
-    # Seed admin user if no users exist
-    with app.app_context():
-        from qdflask.models import User
-        if User.query.count() == 0:
-            create_admin_user()
-            app.logger.info(
-                "Created initial admin user (admin/admin)"
-                " - change password after first login"
-            )
+    # Initialize authentication (qdflaskauth now provides all auth routes)
+    from qdflaskauth import init_qdflaskauth
+    init_qdflaskauth(app,
+        roles=['admin', 'editor', 'reader'],
+        login_view='auth.login',
+        enable_registration=True,
+        enable_change_password=True,
+        registration_role='reader')
 
     # Initialize commenting system (shares qdflask's db)
     from qdcomments import init_comments
@@ -92,7 +83,6 @@ def create_app(config_class=None):
     from trellis import routes
     app.register_blueprint(routes.main_bp)
     app.register_blueprint(routes.editor_bp)
-    app.register_blueprint(routes.auth_bp)
 
     # Error handlers for production
     @app.errorhandler(404)
@@ -132,24 +122,28 @@ def create_app(config_class=None):
         from datetime import datetime, timedelta
         from qdcomments.models import Comment
         from qdflaskemail import send_to_admins
+        from qdflask.models import get_db
 
         # Count comments from last 24 hours
-        yesterday = datetime.utcnow() - timedelta(hours=24)
-        new_comments = Comment.query.filter(Comment.created_at >= yesterday).count()
+        yesterday = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        db = get_db()
+        new_comments = db.count('comments', where={
+            'created_at': ('>=', yesterday)
+        })
 
         if new_comments == 0:
             print("No new comments in last 24 hours - skipping digest")
             return
 
         # Count by status
-        pending = Comment.query.filter(
-            Comment.created_at >= yesterday,
-            Comment.status == 'm'
-        ).count()
-        posted = Comment.query.filter(
-            Comment.created_at >= yesterday,
-            Comment.status == 'p'
-        ).count()
+        pending = db.count('comments', where={
+            'created_at': ('>=', yesterday),
+            'status': 'm'
+        })
+        posted = db.count('comments', where={
+            'created_at': ('>=', yesterday),
+            'status': 'p'
+        })
 
         # Send digest
         body = f"""Daily Comment Digest
