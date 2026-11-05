@@ -19,6 +19,9 @@ Required fields and defaults:
     draft           per-source default (fallback: true)
     slug/permalink  derived from filename
     publish_path    from source config or parent directories
+
+Source-level attributes:
+    omit            false (if true, exclude this subtree from processing)
 """
 
 import argparse
@@ -434,9 +437,16 @@ def _upsert_published(conn, guid, source_path, dest_path, publish_path, slug, co
 
 def _collect_source_files(config):
     """Yield ``(filepath, source_entry)`` for every ``.md`` file under all
-    configured sources."""
+    configured sources.
+
+    Sources with ``omit=true`` are skipped entirely.  Files discovered via
+    a parent source scan that match a more-specific omitted source are also
+    skipped.
+    """
     seen = set()
     for src in config['source']:
+        if src.get('omit', False):
+            continue
         src_path = src['_resolved']
         if not src_path.is_dir():
             print(f"  Warning: source not found, skipping: {src['path']}")
@@ -448,6 +458,8 @@ def _collect_source_files(config):
             seen.add(resolved)
             # Re-match to get most-specific source
             matched = match_source(config, resolved)
+            if matched and matched.get('omit', False):
+                continue
             yield resolved, matched
 
 
