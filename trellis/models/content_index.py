@@ -42,12 +42,21 @@ class ContentIndex:
                     created_date TEXT,
                     published_date TEXT,
                     updated_date TEXT,
+                    guid TEXT,
                     last_indexed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_updated_date ON pages(updated_date DESC)')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_source_file ON pages(source_file)')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_title ON pages(title COLLATE NOCASE)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_guid ON pages(guid)')
+
+            # Migration: add guid column to existing databases
+            try:
+                conn.execute('ALTER TABLE pages ADD COLUMN guid TEXT')
+            except sqlite3.OperationalError:
+                pass  # column already exists
+
             conn.commit()
 
     def _get_connection(self):
@@ -98,7 +107,7 @@ class ContentIndex:
         # Fallback to today
         return datetime.now().strftime('%Y-%m-%d')
 
-    def upsert_page(self, url, source_file, metadata, content_dir=None):
+    def upsert_page(self, url, source_file, metadata, content_dir=None, guid=None):
         """Insert or update a page in the index
 
         Args:
@@ -106,6 +115,7 @@ class ContentIndex:
             source_file: Path to source file relative to content dir
             metadata: Dictionary with title, description, dates from frontmatter
             content_dir: Content directory for file mtime lookup (optional)
+            guid: Optional unique identifier from frontmatter
         """
         # Build full source path for mtime lookup
         full_source_path = None
@@ -118,11 +128,15 @@ class ContentIndex:
 
         effective_updated = self._get_effective_updated_date(metadata, full_source_path)
 
+        # Use explicit guid param, fall back to metadata
+        effective_guid = guid or metadata.get('guid')
+
         with self._get_connection() as conn:
             conn.execute('''
                 INSERT INTO pages (url, source_file, title, description,
-                                   created_date, published_date, updated_date, last_indexed)
-                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                                   created_date, published_date, updated_date,
+                                   guid, last_indexed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(url) DO UPDATE SET
                     source_file = excluded.source_file,
                     title = excluded.title,
@@ -130,6 +144,7 @@ class ContentIndex:
                     created_date = excluded.created_date,
                     published_date = excluded.published_date,
                     updated_date = excluded.updated_date,
+                    guid = excluded.guid,
                     last_indexed = CURRENT_TIMESTAMP
             ''', (
                 url,
@@ -138,7 +153,8 @@ class ContentIndex:
                 metadata.get('description', ''),
                 self._normalize_date(metadata.get('created_date')),
                 self._normalize_date(metadata.get('published_date')),
-                effective_updated
+                effective_updated,
+                effective_guid
             ))
             conn.commit()
 
@@ -288,5 +304,25 @@ class ContentIndex:
                 ORDER BY LENGTH(url)
                 LIMIT 1
             ''', (f'%/{slug}',))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def find_page_by_guid(self, guid):
+        """Find a page by its guid
+
+        Args:
+            guid: Unique identifier from frontmatter
+
+        Returns:
+            Dictionary with page info or None if not found
+        """
+        with self._get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute('''
+                SELECT url, source_file, title, description, guid
+                FROM pages
+                WHERE guid = ?
+                LIMIT 1
+            ''', (guid,))
             row = cursor.fetchone()
             return dict(row) if row else None

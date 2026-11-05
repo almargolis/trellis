@@ -71,7 +71,8 @@ def _index_directory(content_index, base_content_dir, current_dir, garden_slug, 
                     url=url,
                     source_file=source_file,
                     metadata=article['metadata'],
-                    content_dir=base_content_dir
+                    content_dir=base_content_dir,
+                    guid=article['metadata'].get('guid')
                 )
                 indexed_count += 1
                 print(f"  Indexed: {url}")
@@ -88,7 +89,8 @@ def _index_directory(content_index, base_content_dir, current_dir, garden_slug, 
                         url=url,
                         source_file=source_file,
                         metadata=article['metadata'],
-                        content_dir=base_content_dir
+                        content_dir=base_content_dir,
+                        guid=article['metadata'].get('guid')
                     )
                     indexed_count += 1
                     print(f"  Indexed: {url}")

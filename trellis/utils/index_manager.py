@@ -112,7 +112,8 @@ class IndexManager:
 
             # Update content index
             content_index = self._get_content_index()
-            content_index.upsert_page(url, source_file, metadata, self.content_dir)
+            content_index.upsert_page(url, source_file, metadata, self.content_dir,
+                                      guid=metadata.get('guid'))
 
             # Update search index
             search_index = self._get_search_index()
@@ -200,7 +201,8 @@ class IndexManager:
                     url=url,
                     source_file=item['filename'],
                     metadata=item['metadata'],
-                    content_dir=self.content_dir
+                    content_dir=self.content_dir,
+                    guid=item['metadata'].get('guid')
                 )
 
         # Index each garden
@@ -215,7 +217,8 @@ class IndexManager:
                         url=url,
                         source_file=f"{garden['slug']}/{article['filename']}",
                         metadata=article['metadata'],
-                        content_dir=self.content_dir
+                        content_dir=self.content_dir,
+                        guid=article['metadata'].get('guid')
                     )
 
         # Clear dirty flag
