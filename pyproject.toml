@@ -62,6 +62,9 @@ Repository = "https://github.com/almargolis/trellis"
 where = ["."]
 include = ["trellis*"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.setuptools_scm]
 # Version is automatically derived from git tags
 # Tags should be in format: v0.1.0, v0.2.0, etc.
