@@ -1,3 +1,15 @@
++++
+guid = "6170233a-42c8-4d60-b3ba-fde23748231a"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "quickdev-dev-setup"
+publish_path = "trellis/docs/includes"
+source_path = "/Users/almargolis/projects/published/trellis/docs/includes/quickdev-dev-setup.md"
++++
 ### Working with Quickdev Dependencies
 
 If you're developing features that span both the application and quickdev packages (qdflask, qdcomments, etc.), use editable installations:

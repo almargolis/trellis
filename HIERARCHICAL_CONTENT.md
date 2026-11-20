@@ -1,3 +1,15 @@
++++
+guid = "fce8c5f2-cc6f-47d7-9b6d-2abc906502ad"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "hierarchical_content"
+publish_path = "trellis"
+source_path = "/Users/almargolis/projects/published/trellis/HIERARCHICAL_CONTENT.md"
++++
 # Hierarchical Content Structure
 
 This document describes the hierarchical content structure feature in Trellis, a Flask-based digital garden CMS.

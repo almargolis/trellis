@@ -1,3 +1,15 @@
++++
+guid = "582d24b2-6c09-42b2-ab86-fd1d457834f7"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "backup"
+publish_path = "trellis/docs/maintenance"
+source_path = "/Users/almargolis/projects/published/trellis/docs/maintenance/backup.md"
++++
 # Backup Strategy
 
 Protect your Trellis content with a robust backup approach.

@@ -1,3 +1,15 @@
++++
+guid = "5ae1e58c-6c29-4a12-8243-7ddcf055e9d5"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "api"
+publish_path = "trellis/docs/reference"
+source_path = "/Users/almargolis/projects/published/trellis/docs/reference/api.md"
++++
 # API Reference
 
 Code-level documentation for Trellis CMS modules and classes.
@@ -36,44 +48,44 @@ Handle markdown file I/O and processing.
 
 **Location:** `trellis/utils/markdown_handler.py`
 
-#### \_\_init\_\_(content_dir)
+#### \_\_init\_\_(content_dir, data_dir=None)
 
 Initialize markdown handler.
 
 **Parameters:**
 - `content_dir` (str): Path to content directory
+- `data_dir` (str, optional): Path to data directory (enables wiki-link resolution via ContentIndex)
 
 ```python
 from trellis.utils.markdown_handler import MarkdownHandler
 
-handler = MarkdownHandler('/path/to/content')
+handler = MarkdownHandler('/path/to/content', '/path/to/data')
 ```
 
-#### parse_file(file_path)
+#### parse_file(filename)
 
-Read and parse markdown file with frontmatter.
+Read and parse markdown file with frontmatter. Supports both `.md` files and `.page` directories.
 
 **Parameters:**
-- `file_path` (str): Path to markdown file
+- `filename` (str): Relative path within content_dir
 
 **Returns:**
-- `tuple`: (metadata dict, content string)
+- `dict` with keys:
+  - `metadata` (dict): Parsed frontmatter
+  - `content` (str): Rendered HTML
+  - `raw_content` (str): Original markdown body
+  - `frontmatter_format` (str): Format type ('yaml', 'toml', 'json')
+  - `slug` (str): Generated URL slug
+  - `is_page_dir` (bool): Whether from a `.page` directory
+  - `broken_links` (list, optional): Unresolved wiki-link targets
 
 **Example:**
 ```python
-metadata, content = handler.parse_file('content/blog/article.md')
-
-print(metadata['title'])
-print(content)
+result = handler.parse_file('blog/article.md')
+print(result['metadata']['title'])
+print(result['content'])  # HTML
+print(result['raw_content'])  # Markdown
 ```
-
-**Metadata Fields:**
-- `title` (str): Article title
-- `published_date` (str): Publication date
-- `created_date` (str): Creation date
-- `updated_date` (str): Last update date
-- `tags` (list): List of tags
-- `status` (str): 'published' or 'draft'
 
 #### save_file(file_path, metadata, content)
 
@@ -525,6 +537,74 @@ manager.mark_dirty()
 
 # Cron job later checks flag and rebuilds
 ```
+
+### Frontmatter Module
+
+Shared frontmatter parsing, writing, and validation.
+
+**Location:** `trellis/utils/frontmatter.py`
+
+#### parse_file(filepath)
+
+Parse frontmatter and body from a markdown file.
+
+**Returns:** `(fmt, metadata, body)` where fmt is 'yaml', 'toml', 'json', or None.
+
+#### parse_string(text)
+
+Same as `parse_file` but operates on a string.
+
+#### write_file(filepath, fmt, metadata, body)
+
+Write a markdown file with frontmatter in the given format.
+
+#### ensure_required_fields(filepath, metadata, fmt, default_fmt='toml', source_defaults=None)
+
+Ensure all required Trellis frontmatter fields are present. Adds missing fields (guid, dates, public, publish, draft, slug). Auto-migrates `sensitive` → `public`.
+
+**Returns:** `(fmt, changed)` where changed is True if any fields were added.
+
+### ContentIndex
+
+SQLite-based content metadata index for fast lookups.
+
+**Location:** `trellis/models/content_index.py`
+
+#### \_\_init\_\_(data_dir)
+
+Creates `trellis_content.db` in data_dir.
+
+#### upsert_page(url, source_file, metadata, content_dir=None, guid=None, public_specified=None, public_effective=False, draft=True)
+
+Insert or update a page in the index with visibility settings.
+
+#### find_page_by_title(title)
+
+Find page by exact title match (case-insensitive). Returns dict or None.
+
+#### find_page_by_slug(slug)
+
+Find page by URL slug with multiple pattern matching strategies.
+
+#### find_page_by_guid(guid)
+
+Find page by unique frontmatter identifier.
+
+#### find_pages_by_title_fuzzy(title, limit=5)
+
+Find pages with titles similar to search term.
+
+#### get_recent_pages(limit=10, public_only=False)
+
+Get recently updated pages. When `public_only=True`, filters to public non-draft pages only.
+
+#### get_all_pages(public_only=False)
+
+Get all indexed pages with optional public filtering.
+
+#### is_page_visible(url)
+
+Check if a page is public and non-draft. Returns boolean.
 
 ## CLI Commands
 

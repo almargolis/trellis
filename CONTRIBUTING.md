@@ -1,3 +1,15 @@
++++
+guid = "b7008468-0de8-4bac-8709-d781bae84f28"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "contributing"
+publish_path = "trellis"
+source_path = "/Users/almargolis/projects/published/trellis/CONTRIBUTING.md"
++++
 # Contributing to Trellis
 
 Thank you for your interest in contributing to Trellis!

@@ -1,3 +1,15 @@
++++
+guid = "b86ad7fb-98c9-471a-a5ed-05e16efd5ce7"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "first-garden"
+publish_path = "trellis/docs/getting-started"
+source_path = "/Users/almargolis/projects/published/trellis/docs/getting-started/first-garden.md"
++++
 # Your First Garden
 
 A step-by-step guide to creating a complete digital garden with multiple posts.

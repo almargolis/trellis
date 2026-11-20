@@ -1,3 +1,15 @@
++++
+guid = "014bbb5b-98da-43ee-b5cb-fda2d0c5fa49"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "wiki-links"
+publish_path = "trellis/docs/content"
+source_path = "/Users/almargolis/projects/published/trellis/docs/content/wiki-links.md"
++++
 # Wiki Links
 
 Easy internal linking with wiki-style syntax.

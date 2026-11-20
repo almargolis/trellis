@@ -1,9 +1,14 @@
 import markdown
-import frontmatter
 import os
 from pathlib import Path
 from datetime import datetime
 import re
+
+from trellis.utils.frontmatter import (
+    parse_file as parse_frontmatter,
+    write_file as write_frontmatter,
+    FMT_YAML,
+)
 
 class MarkdownHandler:
     def __init__(self, content_dir, data_dir=None):
@@ -35,19 +40,19 @@ class MarkdownHandler:
             if not filepath.exists():
                 raise FileNotFoundError(f"page.md not found in {filename}")
 
-        with open(filepath, 'r', encoding='utf-8') as f:
-            post = frontmatter.load(f)
+        fmt, metadata, body = parse_frontmatter(filepath)
 
         # Process includes and wiki-links before converting to HTML
-        processed_content = self._process_includes(post.content, filepath.parent)
+        processed_content = self._process_includes(body, filepath.parent)
         processed_content = self._process_wikilinks(processed_content)
 
         html_content = self.md.convert(processed_content)
 
         result = {
-            'metadata': post.metadata,
+            'metadata': metadata,
             'content': html_content,
-            'raw_content': post.content,
+            'raw_content': body,
+            'frontmatter_format': fmt,
             'slug': self.generate_slug(filename),
             'is_page_dir': filepath.name == 'page.md'
         }
@@ -155,14 +160,19 @@ class MarkdownHandler:
 
         return re.sub(include_pattern, replace_include, content)
 
-    def save_file(self, filename, metadata, content):
-        """Save markdown file with frontmatter"""
-        filepath = self.content_dir / filename
-        post = frontmatter.Post(content, **metadata)
+    def save_file(self, filename, metadata, content, fmt=None):
+        """Save markdown file with frontmatter.
 
+        Args:
+            filename: Relative path within content_dir.
+            metadata: Frontmatter metadata dict.
+            content: Markdown body text.
+            fmt: Frontmatter format (FMT_YAML, FMT_TOML, FMT_JSON).
+                 Defaults to YAML if not specified.
+        """
+        filepath = self.content_dir / filename
         filepath.parent.mkdir(parents=True, exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(frontmatter.dumps(post))
+        write_frontmatter(filepath, fmt or FMT_YAML, metadata, content)
 
     def list_items(self):
         """List all items in the current directory (non-recursive)

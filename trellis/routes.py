@@ -6,6 +6,7 @@ from trellis.utils.markdown_handler import MarkdownHandler
 from trellis.utils.git_handler import GitHandler
 from trellis.utils.garden_manager import GardenManager
 from trellis.utils.search_index import SearchIndex
+from trellis.utils import frontmatter as fm
 from flask import current_app
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -19,23 +20,58 @@ editor_bp = Blueprint('editor', __name__, url_prefix='/editor')
 
 @main_bp.app_context_processor
 def inject_site_config():
+    from trellis.themes import get_theme_css
     return {
         'site_name': current_app.config.get('SITE_NAME', 'Trellis'),
         'site_author': current_app.config.get('SITE_AUTHOR', ''),
+        'site_logo': current_app.config.get('SITE_LOGO', ''),
+        'theme_css': get_theme_css(current_app.config.get('THEME', 'default')),
         'now': datetime.now(),
     }
 
 # ============================================================================
-# Draft Visibility Helpers
+# Visibility Helpers
 # ============================================================================
 
 def _is_draft(item):
-    """Check if a content item has draft status"""
-    return item.get('metadata', {}).get('status') == 'draft'
+    """Check if a content item has draft status.
 
-def _can_view_drafts():
-    """Check if the current user can view draft content"""
+    Checks both the ``status`` field (web editor convention) and the
+    ``draft`` boolean (trellis_source convention).
+    """
+    meta = item.get('metadata', {})
+    if meta.get('status') == 'draft':
+        return True
+    if meta.get('draft') is True:
+        return True
+    return False
+
+def _is_editor():
+    """Check if the current user has editor or admin privileges."""
     return current_user.is_authenticated and current_user.is_editor()
+
+def _is_visible(item, garden_slug=None, article_path=None):
+    """Check if a content item is visible to the current user.
+
+    Editors see everything. Readers see only items that are both
+    effectively public and not draft.
+    """
+    if _is_editor():
+        return True
+    if _is_draft(item):
+        return False
+    # Check public status
+    meta = item.get('metadata', {})
+    file_public = meta.get('public')
+    if garden_slug:
+        garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
+        _, effective = garden_manager.compute_effective_public(
+            garden_slug, article_path or '',
+            file_public=file_public,
+        )
+        return effective
+    # Root-level pages: use file's own public setting
+    return bool(file_public) if file_public is not None else False
 
 # ============================================================================
 # Decorators
@@ -68,18 +104,18 @@ def index():
     content_path = Path(current_app.config['GARDEN_DIR'])
     handler = MarkdownHandler(content_path, current_app.config.get('DATA_DIR'))
     root_items = []
-    can_view = _can_view_drafts()
     for item in handler.list_items():
         # Only include pages, not directories (those are gardens)
         if item.get('type') in ['markdown', 'page']:
-            if not _is_draft(item) or can_view:
+            if _is_visible(item):
                 root_items.append(item)
 
     # Get recently updated pages from content index
+    public_only = not _is_editor()
     recent_pages = []
     try:
         content_index = ContentIndex(current_app.config['DATA_DIR'])
-        recent_pages = content_index.get_recent_pages(limit=10)
+        recent_pages = content_index.get_recent_pages(limit=10, public_only=public_only)
     except Exception as e:
         print(f"Error getting recent pages: {e}")
 
@@ -99,7 +135,7 @@ def root_page(page_path):
     if not article or article.get('type') not in ['markdown', 'page']:
         return "Page not found", 404
 
-    if _is_draft(article) and not _can_view_drafts():
+    if not _is_visible(article):
         return "Page not found", 404
 
     garden_manager = GardenManager(current_app.config['GARDEN_DIR'])
@@ -130,13 +166,10 @@ def search():
 
     if query:
         search_index = SearchIndex(current_app.config['DATA_DIR'])
-        search_result = search_index.search(query)
+        public_only = not _is_editor()
+        search_result = search_index.search(query, public_only=public_only)
         results = search_result['results']
         error = search_result['error']
-
-        # Hide drafts from non-editors
-        if not _can_view_drafts():
-            results = [r for r in results if r.get('status', 'published') != 'draft']
 
     return render_template('search.html',
                          query=query,
@@ -162,9 +195,9 @@ def garden(garden_slug):
     handler = MarkdownHandler(garden_path, current_app.config.get('DATA_DIR'))
     items = handler.list_items()
 
-    # Filter out drafts for non-editors
-    if not _can_view_drafts():
-        items = [i for i in items if not _is_draft(i)]
+    # Filter for visibility (public + non-draft for readers, everything for editors)
+    if not _is_editor():
+        items = [i for i in items if _is_visible(i, garden_slug=garden_slug)]
 
     # Build breadcrumbs
     breadcrumbs = [
@@ -210,9 +243,9 @@ def article(garden_slug, article_path):
         handler = MarkdownHandler(potential_dir, current_app.config.get('DATA_DIR'))
         items = handler.list_items()
 
-        # Filter out drafts for non-editors
-        if not _can_view_drafts():
-            items = [i for i in items if not _is_draft(i)]
+        # Filter for visibility
+        if not _is_editor():
+            items = [i for i in items if _is_visible(i, garden_slug=garden_slug, article_path=article_path)]
 
         # Get config for this directory
         config = garden_manager.get_or_create_config(f"{garden_slug}/{article_path}")
@@ -236,17 +269,35 @@ def article(garden_slug, article_path):
     if not article:
         return "Article not found", 404
 
-    if _is_draft(article) and not _can_view_drafts():
+    if not _is_visible(article, garden_slug=garden_slug, article_path=article_path):
         return "Article not found", 404
 
     # Build breadcrumbs
     breadcrumbs = garden_manager.get_breadcrumbs(garden_slug, article_path)
 
-    # Load comments for this article
+    # Ensure article has a GUID; auto-assign if missing
+    guid = article['metadata'].get('guid')
+    if not guid:
+        guid = fm.generate_guid()
+        article['metadata']['guid'] = guid
+        # Write GUID back to the file
+        try:
+            article_file = content_dir / article['filename']
+            if article_file.is_dir() and article_file.suffix == '.page':
+                article_file = article_file / 'page.md'
+            fmt_on_disk, meta_on_disk, body_on_disk = fm.parse_file(article_file)
+            if fmt_on_disk is None:
+                fmt_on_disk = current_app.config.get('DEFAULT_FRONT_MATTER_FORMAT', 'yaml')
+            meta_on_disk['guid'] = guid
+            fm.write_file(article_file, fmt_on_disk, meta_on_disk, body_on_disk)
+        except Exception as e:
+            print(f"Failed to auto-assign GUID to {article['filename']}: {e}")
+
+    # Load comments for this article (keyed by GUID for persistence across renames)
     from qdcomments.models import Comment
     from qdcomments.filters import CommentContentProcessor
 
-    content_id = f"{garden_slug}/{article_path}"
+    content_id = guid
     comments_raw = Comment.get_for_content(
         content_type='article',
         content_id=content_id,
@@ -280,7 +331,14 @@ def page_asset(garden_slug, article_path, filename):
         /garden/projects/my-project/assets/screenshot.png
         -> serves projects/my-project.page/screenshot.png
     """
-    from werkzeug.utils import safe_join
+    # Check parent page visibility for non-editors
+    if not _is_editor():
+        content_dir = Path(current_app.config['GARDEN_DIR']) / garden_slug
+        handler = MarkdownHandler(content_dir, current_app.config.get('DATA_DIR'))
+        articles = handler.list_articles()
+        parent = next((a for a in articles if handler.generate_slug(a['filename']) == article_path), None)
+        if parent and not _is_visible(parent, garden_slug=garden_slug, article_path=article_path):
+            return "Asset not found", 404
 
     # Reconstruct the .page directory path
     # article_path might be "my-project" which maps to "my-project.page"
@@ -466,7 +524,7 @@ def browse(dir_path=''):
 @editor_required
 def create_garden():
     """Create a new garden (directory with config.yaml)"""
-    import yaml
+    from trellis.utils.garden_manager import derive_nickname, validate_nickname
     name = request.json.get('name', '').strip()
     parent_path = request.json.get('parent_path', '')
 
@@ -484,20 +542,17 @@ def create_garden():
     if new_dir.exists():
         return jsonify({'error': f'Directory "{slug}" already exists'}), 400
 
-    try:
-        # Create directory
-        new_dir.mkdir(parents=True, exist_ok=True)
+    nickname = derive_nickname(slug)
 
-        # Create config.yaml
-        config = {
-            'title': name,
-            'description': '',
-            'created_date': datetime.now().strftime('%Y-%m-%d'),
-            'order': 999
-        }
-        config_path = new_dir / 'config.yaml'
-        with open(config_path, 'w') as f:
-            yaml.dump(config, f, default_flow_style=False)
+    # Check uniqueness within this Garden instance
+    garden_manager = GardenManager(content_dir)
+    if not garden_manager.is_nickname_unique(nickname):
+        return jsonify({'error': f'Nickname "{nickname}" is already in use'}), 400
+
+    try:
+        garden_manager.create_garden_config(
+            slug, title=name, nickname=nickname
+        )
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -517,7 +572,6 @@ def create_garden():
 @editor_required
 def create_page():
     """Create a new complex page (.page directory with page.md)"""
-    import frontmatter
     name = request.json.get('name', '').strip()
     parent_path = request.json.get('parent_path', '')
 
@@ -541,16 +595,16 @@ def create_page():
 
         # Create page.md with frontmatter
         metadata = {
+            'guid': fm.generate_guid(),
             'title': name,
             'created_date': datetime.now().strftime('%Y-%m-%d'),
             'published_date': datetime.now().strftime('%Y-%m-%d'),
             'status': 'draft'
         }
-        post = frontmatter.Post('# ' + name + '\n\nYour content here.', **metadata)
-
+        body = '# ' + name + '\n\nYour content here.\n'
         page_md = new_dir / 'page.md'
-        with open(page_md, 'w') as f:
-            f.write(frontmatter.dumps(post))
+        default_fmt = current_app.config.get('DEFAULT_FRONT_MATTER_FORMAT', 'yaml')
+        fm.write_file(page_md, default_fmt, metadata, body)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -584,7 +638,6 @@ def create_page():
 @editor_required
 def create_file():
     """Create a new text file"""
-    import frontmatter
     name = request.json.get('name', '').strip()
     extension = request.json.get('extension', '.md').strip()
     parent_path = request.json.get('parent_path', '')
@@ -609,15 +662,17 @@ def create_file():
     try:
         # Create file with appropriate content
         if extension == '.md':
-            # Markdown with frontmatter
+            # Markdown with frontmatter including GUID
             metadata = {
+                'guid': fm.generate_guid(),
                 'title': name,
                 'created_date': datetime.now().strftime('%Y-%m-%d'),
                 'published_date': datetime.now().strftime('%Y-%m-%d'),
                 'status': 'draft'
             }
-            post = frontmatter.Post(f'# {name}\n\nYour content here.', **metadata)
-            content = frontmatter.dumps(post)
+            body = f'# {name}\n\nYour content here.\n'
+            default_fmt = current_app.config.get('DEFAULT_FRONT_MATTER_FORMAT', 'yaml')
+            content = fm.format_frontmatter(default_fmt, metadata) + body
         elif extension in ['.yaml', '.yml']:
             # YAML template
             content = f"# {name}\n# Created: {datetime.now().strftime('%Y-%m-%d')}\n\n"
@@ -707,11 +762,8 @@ def edit_file(file_path):
     raw_content = content
     if extension == '.md':
         try:
-            import frontmatter
-            post = frontmatter.loads(content)
-            metadata = post.metadata
-            raw_content = post.content
-        except:
+            fmt, metadata, raw_content = fm.parse_string(content)
+        except Exception:
             pass
 
     # Build breadcrumbs

@@ -110,10 +110,27 @@ class IndexManager:
                 url = f"/page/{slug}"
                 source_file = file_path
 
+            # Compute effective public status
+            from trellis.utils.garden_manager import GardenManager
+            garden_manager = GardenManager(self.content_dir)
+            file_public = metadata.get('public')
+            if garden_slug:
+                article_slug = handler.generate_slug(file_path)
+                _, pub_effective = garden_manager.compute_effective_public(
+                    garden_slug, article_slug, file_public=file_public
+                )
+            else:
+                pub_effective = bool(file_public) if file_public is not None else False
+
+            is_draft = metadata.get('draft', True)
+
             # Update content index
             content_index = self._get_content_index()
             content_index.upsert_page(url, source_file, metadata, self.content_dir,
-                                      guid=metadata.get('guid'))
+                                      guid=metadata.get('guid'),
+                                      public_specified=file_public,
+                                      public_effective=pub_effective,
+                                      draft=is_draft)
 
             # Update search index
             search_index = self._get_search_index()
@@ -124,7 +141,9 @@ class IndexManager:
                 description=metadata.get('description', ''),
                 content=html,
                 garden=garden_slug or '',
-                status=metadata.get('status', 'published')
+                status=metadata.get('status', 'published'),
+                public_effective=pub_effective,
+                draft=is_draft,
             )
 
         except Exception as e:
@@ -197,28 +216,43 @@ class IndexManager:
         for item in handler.list_items():
             if item.get('type') in ['markdown', 'page']:
                 url = f"/page/{item['slug']}"
+                meta = item['metadata']
+                file_public = meta.get('public')
                 content_index.upsert_page(
                     url=url,
                     source_file=item['filename'],
-                    metadata=item['metadata'],
+                    metadata=meta,
                     content_dir=self.content_dir,
-                    guid=item['metadata'].get('guid')
+                    guid=meta.get('guid'),
+                    public_specified=file_public,
+                    public_effective=bool(file_public) if file_public is not None else False,
+                    draft=meta.get('draft', True),
                 )
 
         # Index each garden
         for garden in gardens:
-            garden_path = self.content_dir / garden['slug']
+            garden_slug = garden['slug']
+            garden_path = self.content_dir / garden_slug
             handler = MarkdownHandler(garden_path, self.data_dir)
 
             for article in handler.list_articles(recursive=True):
                 if article.get('type') in ['markdown', 'page']:
-                    url = f"/garden/{garden['slug']}/{article['slug']}"
+                    meta = article['metadata']
+                    file_public = meta.get('public')
+                    _, pub_effective = garden_manager.compute_effective_public(
+                        garden_slug, article['slug'],
+                        file_public=file_public,
+                    )
+                    url = f"/garden/{garden_slug}/{article['slug']}"
                     content_index.upsert_page(
                         url=url,
-                        source_file=f"{garden['slug']}/{article['filename']}",
-                        metadata=article['metadata'],
+                        source_file=f"{garden_slug}/{article['filename']}",
+                        metadata=meta,
                         content_dir=self.content_dir,
-                        guid=article['metadata'].get('guid')
+                        guid=meta.get('guid'),
+                        public_specified=file_public,
+                        public_effective=pub_effective,
+                        draft=meta.get('draft', True),
                     )
 
         # Clear dirty flag

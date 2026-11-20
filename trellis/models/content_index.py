@@ -43,6 +43,10 @@ class ContentIndex:
                     published_date TEXT,
                     updated_date TEXT,
                     guid TEXT,
+                    source_path TEXT,
+                    public_specified INTEGER,
+                    public_effective INTEGER DEFAULT 0,
+                    draft INTEGER DEFAULT 1,
                     last_indexed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -51,11 +55,15 @@ class ContentIndex:
             conn.execute('CREATE INDEX IF NOT EXISTS idx_title ON pages(title COLLATE NOCASE)')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_guid ON pages(guid)')
 
-            # Migration: add guid column to existing databases
-            try:
-                conn.execute('ALTER TABLE pages ADD COLUMN guid TEXT')
-            except sqlite3.OperationalError:
-                pass  # column already exists
+            # Migrations: add columns to existing databases
+            for col in ('guid TEXT', 'source_path TEXT',
+                        'public_specified INTEGER',
+                        'public_effective INTEGER DEFAULT 0',
+                        'draft INTEGER DEFAULT 1'):
+                try:
+                    conn.execute(f'ALTER TABLE pages ADD COLUMN {col}')
+                except sqlite3.OperationalError:
+                    pass  # column already exists
 
             conn.commit()
 
@@ -107,7 +115,8 @@ class ContentIndex:
         # Fallback to today
         return datetime.now().strftime('%Y-%m-%d')
 
-    def upsert_page(self, url, source_file, metadata, content_dir=None, guid=None):
+    def upsert_page(self, url, source_file, metadata, content_dir=None, guid=None,
+                     public_specified=None, public_effective=False, draft=True):
         """Insert or update a page in the index
 
         Args:
@@ -116,6 +125,9 @@ class ContentIndex:
             metadata: Dictionary with title, description, dates from frontmatter
             content_dir: Content directory for file mtime lookup (optional)
             guid: Optional unique identifier from frontmatter
+            public_specified: Explicit public setting on this item (True/False/None)
+            public_effective: Computed public status considering inheritance
+            draft: Whether the page is a draft
         """
         # Build full source path for mtime lookup
         full_source_path = None
@@ -131,12 +143,19 @@ class ContentIndex:
         # Use explicit guid param, fall back to metadata
         effective_guid = guid or metadata.get('guid')
 
+        # Convert booleans to integers for SQLite
+        pub_spec = None if public_specified is None else int(public_specified)
+        pub_eff = int(public_effective)
+        draft_int = int(draft)
+
         with self._get_connection() as conn:
             conn.execute('''
                 INSERT INTO pages (url, source_file, title, description,
                                    created_date, published_date, updated_date,
-                                   guid, last_indexed)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                                   guid, source_path,
+                                   public_specified, public_effective, draft,
+                                   last_indexed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(url) DO UPDATE SET
                     source_file = excluded.source_file,
                     title = excluded.title,
@@ -145,6 +164,10 @@ class ContentIndex:
                     published_date = excluded.published_date,
                     updated_date = excluded.updated_date,
                     guid = excluded.guid,
+                    source_path = excluded.source_path,
+                    public_specified = excluded.public_specified,
+                    public_effective = excluded.public_effective,
+                    draft = excluded.draft,
                     last_indexed = CURRENT_TIMESTAMP
             ''', (
                 url,
@@ -154,7 +177,11 @@ class ContentIndex:
                 self._normalize_date(metadata.get('created_date')),
                 self._normalize_date(metadata.get('published_date')),
                 effective_updated,
-                effective_guid
+                effective_guid,
+                metadata.get('source_path'),
+                pub_spec,
+                pub_eff,
+                draft_int,
             ))
             conn.commit()
 
@@ -170,38 +197,68 @@ class ContentIndex:
             conn.execute('DELETE FROM pages WHERE source_file = ?', (source_file,))
             conn.commit()
 
-    def get_recent_pages(self, limit=10):
+    def get_recent_pages(self, limit=10, public_only=False):
         """Get recently updated pages
 
         Args:
             limit: Maximum number of pages to return
+            public_only: If True, only return public non-draft pages
 
         Returns:
             List of dictionaries with page info
         """
+        where = 'WHERE updated_date IS NOT NULL'
+        if public_only:
+            where += ' AND public_effective = 1 AND draft = 0'
+
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute('''
+            cursor = conn.execute(f'''
                 SELECT url, source_file, title, description,
                        created_date, published_date, updated_date
                 FROM pages
-                WHERE updated_date IS NOT NULL
+                {where}
                 ORDER BY updated_date DESC
                 LIMIT ?
             ''', (limit,))
             return [dict(row) for row in cursor.fetchall()]
 
-    def get_all_pages(self):
-        """Get all indexed pages"""
+    def get_all_pages(self, public_only=False):
+        """Get all indexed pages
+
+        Args:
+            public_only: If True, only return public non-draft pages
+        """
+        where = ''
+        if public_only:
+            where = 'WHERE public_effective = 1 AND draft = 0'
+
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute('''
+            cursor = conn.execute(f'''
                 SELECT url, source_file, title, description,
                        created_date, published_date, updated_date
                 FROM pages
+                {where}
                 ORDER BY title
             ''')
             return [dict(row) for row in cursor.fetchall()]
+
+    def is_page_visible(self, url):
+        """Check if a page is public and non-draft.
+
+        Returns True if the page at the given URL is visible to readers.
+        Returns False if the page doesn't exist or is not visible.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute('''
+                SELECT public_effective, draft
+                FROM pages WHERE url = ?
+            ''', (url,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            return bool(row[0]) and not bool(row[1])
 
     def get_page_count(self):
         """Get total number of indexed pages"""

@@ -1,3 +1,15 @@
++++
+guid = "11204ade-a5bf-4a4b-bac4-6990955d8ec2"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "quickstart"
+publish_path = "trellis"
+source_path = "/Users/almargolis/projects/published/trellis/QUICKSTART.md"
++++
 # Trellis Quick Start
 
 ## Creating a New Site

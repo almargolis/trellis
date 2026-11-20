@@ -1,3 +1,15 @@
++++
+guid = "dcab9260-4556-499e-a34f-ea955bdd951f"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "writing"
+publish_path = "trellis/docs/content"
+source_path = "/Users/almargolis/projects/published/trellis/docs/content/writing.md"
++++
 # Writing Content
 
 Comprehensive guide to writing and formatting content in Trellis.

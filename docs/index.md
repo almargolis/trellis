@@ -1,3 +1,15 @@
++++
+guid = "3fa8c491-e7e3-4526-86ce-66a30c1a663c"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "index"
+publish_path = "trellis/docs"
+source_path = "/Users/almargolis/projects/published/trellis/docs/index.md"
++++
 # Welcome to Trellis
 
 **Trellis** is a Flask-based digital garden and hierarchical content management system designed to help you quickly create and maintain a personal blog or knowledge base.

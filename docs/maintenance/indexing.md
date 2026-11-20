@@ -1,3 +1,15 @@
++++
+guid = "6b98a91b-9a1b-4686-aebf-0232a2a08057"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "indexing"
+publish_path = "trellis/docs/maintenance"
+source_path = "/Users/almargolis/projects/published/trellis/docs/maintenance/indexing.md"
++++
 # Search Indexing
 
 Managing Trellis search and content indexes.

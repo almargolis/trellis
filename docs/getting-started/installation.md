@@ -1,3 +1,15 @@
++++
+guid = "75a55420-ddc7-4aa4-82c4-ddd67c557189"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "installation"
+publish_path = "trellis/docs/getting-started"
+source_path = "/Users/almargolis/projects/published/trellis/docs/getting-started/installation.md"
++++
 # Installation Guide
 
 Detailed installation instructions for Trellis CMS.

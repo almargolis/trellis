@@ -1,3 +1,15 @@
++++
+guid = "7cf87130-52c4-4318-ae0c-27e6f0af35d3"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "development"
+publish_path = "trellis/docs/reference"
+source_path = "/Users/almargolis/projects/published/trellis/docs/reference/development.md"
++++
 # Development Setup
 
 Guide for developers working on Trellis or its dependencies.

@@ -7,12 +7,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('comments.static', filename='qdcomments/comments.css') }}">
+    {% if theme_css %}<style>{{ theme_css|safe }}</style>{% endif %}
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <nav class="main-nav">
         <div class="container">
-            <a href="{{ url_for('main.index') }}" class="logo">{{ site_name }}</a>
+            <a href="{{ url_for('main.index') }}" class="logo">{% if site_logo %}<img src="{{ url_for('static', filename=site_logo) }}" alt="{{ site_name }}" class="site-logo">{% endif %}{{ site_name }}</a>
             <form class="nav-search" action="{{ url_for('main.search') }}" method="get">
                 <input type="text" name="q" placeholder="Search..." class="nav-search-input">
             </form>

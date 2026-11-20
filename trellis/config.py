@@ -21,11 +21,20 @@ class TrellisConfig:
     # Site branding - override these for your site
     SITE_NAME = os.environ.get('SITE_NAME', 'Trellis')
     SITE_AUTHOR = os.environ.get('SITE_AUTHOR', '')
+    SITE_LOGO = _conf.get('trellis.site_logo', '')
+
+    # Theme preset: 'default', 'forest', 'ocean', 'sunset', 'slate'
+    THEME = _conf.get('trellis.theme', 'default')
 
     # Data and content directories - from conf object
     DATA_DIR = _data_dir
     CONTENT_DIR = _data_dir
     GARDEN_DIR = os.path.join(_data_dir, 'garden') if _data_dir else ''
+
+    # Default frontmatter format for new files: 'yaml', 'toml', or 'json'
+    DEFAULT_FRONT_MATTER_FORMAT = _conf.get(
+        'trellis.default_front_matter_format', 'yaml'
+    )
 
     # Git repository path for auto-commits
     GITLAB_REPO_PATH = os.environ.get('GITLAB_REPO_PATH', '.')

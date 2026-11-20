@@ -1,3 +1,15 @@
++++
+guid = "b3feaf02-2641-4d70-a293-9ca34fa067d0"
+date-created = 2026-11-05
+date-modified = 2026-11-05
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "claude"
+publish_path = "trellis"
+source_path = "/Users/almargolis/projects/published/trellis/CLAUDE.md"
++++
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -49,6 +61,55 @@ Optional environment variables (for non-path settings):
 - `SITE_AUTHOR`: Author name displayed in footer (optional)
 - `GITLAB_REPO_PATH`: Path to git repository for auto-commits (defaults to `.`)
 
+### TrellisSources (Companion Tool)
+
+TrellisSources is a **separate repository** (`trellis-sources/`) that provides the `trellis-source` CLI for publishing markdown files from source directories into Trellis gardens. It depends on `trellis-cms` for shared frontmatter handling.
+
+**Configuration** lives in `~/.trellis/`:
+- `config.toml` (legacy single-garden config)
+- `sources.toml` (global settings for multi-garden mode)
+- `gardens/<nickname>/config.toml` (per-garden source config)
+
+```toml
+# Example: ~/.trellis/config.toml (legacy)
+default_front_matter_format = "toml"
+destination_path = "/path/to/trellis/content"
+
+[[source]]
+path = "~/projects"
+publish_path = "projects"
+public = false
+publish = false
+draft = true
+process = "publish"        # "publish" | "omit" | "review"
+
+[[source]]
+path = "~/projects/secret"
+process = "omit"           # exclude this subtree entirely
+
+[[source]]
+path = "~/projects/published"
+publish_path = "published"
+public = true
+publish = true
+draft = false
+```
+
+**CLI commands:**
+```bash
+trellis-source init          # Create ~/.trellis/ structure
+trellis-source add <path>    # Register a garden
+trellis-source list          # List registered gardens
+trellis-source process       # Add/update frontmatter (default)
+trellis-source check         # Report publishing status
+trellis-source publish       # Copy files to garden content tree
+trellis-source publish --force  # Overwrite even if garden copy is newer
+trellis-source update        # Sync changes from garden back to source
+trellis-source -g <nickname> <cmd>  # Per-garden operations
+```
+
+Sources are matched longest-path-first. The `process` field replaces the old `omit` boolean (auto-migrated). File-level rules (`source_file_path`, `source_file_filter`) enable per-file publish overrides and non-markdown file publishing.
+
 ## Architecture
 
 ### Content Organization
@@ -60,24 +121,24 @@ The application uses a "digital garden" concept:
 
 ### Core Components
 
-**Flask Application Factory** (`app/__init__.py`):
+**Flask Application Factory** (`trellis/__init__.py`):
 - Creates app with configurable instance path for production
 - Initializes database and Flask-Login
-- Registers three blueprints: main, editor, auth
+- Registers blueprints: main, editor
 
 **Blueprints**:
 - `main_bp`: Public-facing routes (gardens, articles)
 - `editor_bp`: Protected content editing interface
-- `auth_bp`: Authentication and user management
+- Authentication is delegated to `qdflaskauth`
 
-**Data Models** (`app/models.py`):
-- `User`: Authentication with role-based access (admin/editor)
-- Uses Flask-SQLAlchemy with SQLite by default
-- Password hashing via werkzeug
+**Data Models** (`trellis/models/`):
+- `User`: Authentication with role-based access (admin/editor) via `qdflaskauth`
+- `ContentIndex`: SQLite-based content metadata index (`trellis_content.db`) for wiki-links, page lookups, and public/draft filtering
 
-**Utility Modules** (`app/utils/`):
-- `MarkdownHandler`: Parse/save markdown with frontmatter, render to HTML
-- `GardenManager`: Manage garden directories and config.yaml files
+**Utility Modules** (`trellis/utils/`):
+- `frontmatter`: Shared frontmatter parsing/writing for YAML, TOML, JSON formats; auto-migration (`sensitive`→`public`); GUID generation; field validation and defaults. This is the single source of truth used by both Trellis and TrellisSources.
+- `MarkdownHandler`: Parse/save markdown with frontmatter, render to HTML, process wiki-links and includes
+- `GardenManager`: Manage garden directories, config.yaml files, nicknames, public visibility inheritance, hierarchy navigation
 - `GitHandler`: Auto-commit changes using GitPython
 - `DateManager`: Handle article date metadata (created/published/updated)
 
@@ -116,15 +177,20 @@ The application supports two content formats:
 1. **Flat files** (traditional): `article.md` in a garden directory
 2. **Page directories** (new): `article.page/page.md` for hierarchical content
 
-Each markdown file should have YAML frontmatter:
-```yaml
----
-title: Article Title
-published_date: 2024-01-01
-updated_date: 2024-01-15
-tags: [python, flask]
-status: published
----
+Each markdown file uses frontmatter (YAML, TOML, or JSON). Trellis frontmatter fields:
+
+```toml
+# TOML example (also supports YAML --- and JSON {})
+guid = "uuid4-string"          # Unique identifier (auto-generated)
+date-created = 2024-01-01     # From filesystem on first process
+date-modified = 2024-01-15    # From filesystem on process
+date-published = 2024-01-01   # Set when publish=true
+public = false                # Visibility (replaces old 'sensitive' field)
+publish = false               # Whether file should be published to garden
+draft = true                  # Draft status
+slug = "article-title"        # URL slug (auto-derived from filename)
+publish_path = "garden-name"  # Target garden for publishing
+source_path = "/path/to/source.md"  # Original source location
 ```
 
 **Page directories** (`.page`) allow:
@@ -329,9 +395,18 @@ Each garden directory should have `config.yaml`:
 ```yaml
 title: Garden Display Name
 description: Brief description
+nickname: garden_name         # Lowercase identifier (auto-derived from slug)
 created_date: null
 order: 999
+public: true                  # Optional: sets default public visibility for all content in this garden
 ```
+
+**Public Visibility Inheritance:**
+- Each garden and subdirectory can set `public: true/false` in its `config.yaml`
+- Files inherit from the nearest ancestor that sets public
+- An explicit `public` in frontmatter overrides inheritance
+- A `public: false` ancestor always overrides child settings
+- `GardenManager.compute_effective_public()` resolves the final visibility
 
 See `HIERARCHICAL_CONTENT.md` for detailed documentation on the hierarchical structure.
 
@@ -356,16 +431,26 @@ The Flask app uses a custom instance path in production to ensure the database i
 - If set and absolute, uses it as Flask's instance path
 - This allows SQLite database to be created outside the read-only git repo
 
+### Frontmatter Module (`trellis/utils/frontmatter.py`)
+The shared frontmatter module is the single source of truth for both Trellis and TrellisSources:
+- Parses YAML (`---`), TOML (`+++`), and JSON (`{}`) frontmatter
+- `ensure_required_fields()` adds missing fields (guid, dates, public, publish, draft, slug)
+- Auto-migrates `sensitive` → `public` (inverted: `sensitive=true` becomes `public=false`)
+- `format_frontmatter()` serializes metadata back to any format
+- Obsidian format uses `permalink` instead of `slug`
+
 ### Markdown Processing
 `MarkdownHandler` uses Python-Markdown with extensions:
 - `fenced_code`: Code blocks with syntax highlighting
 - `codehilite`: Pygments integration
 - `tables`, `toc`, `footnotes`, `attr_list`: Enhanced markdown features
 
-The handler resets between conversions by creating new `markdown.Markdown()` instances.
+Before markdown conversion, the handler processes:
+1. `{{include: filename}}` directives (resolved relative to the containing directory)
+2. `[[Wiki Links]]` (resolved via ContentIndex with title → slug → fuzzy fallback)
 
 ### Date Auto-Updates
-The `updated_date` field is automatically set to current date on every save via `DateManager.auto_update_modified()` at `app/routes.py:282`. The `created_date` and `published_date` are manually managed.
+The `updated_date` field is automatically set to current date on every save via `DateManager.auto_update_modified()`. The `created_date` and `published_date` are manually managed.
 
 ### Hierarchical Content Architecture
 
@@ -395,14 +480,32 @@ Include files are resolved relative to the directory containing `page.md`. Asset
 - Editor: `/editor/` → dashboard, `/editor/edit/<garden>/<path:article_path>` → edit interface
 - Auth: `/auth/login`, `/auth/logout`, `/auth/change-password`, `/auth/users/*`
 
-## Testing Notes
+## Testing
 
-This codebase does not currently have automated tests. When adding features:
-- Test both logged-in and logged-out states
-- Verify admin vs editor role permissions
-- Check markdown rendering with various frontmatter combinations
-- Test git auto-commit functionality
-- Verify database writes work in both dev and production configurations
+### Running Tests
+```bash
+source venv/bin/activate
+pytest tests/ -v
+```
+
+### Test Structure
+All tests use `tmp_path` fixtures to avoid touching production data:
+
+- `tests/conftest.py`: Shared fixtures (`make_md`, `content_dir`, `data_dir`, `garden_dir`, `make_garden`)
+- `tests/test_frontmatter.py`: Frontmatter parsing/writing for all formats, auto-migration, field validation
+- `tests/test_garden_manager.py`: GardenManager methods, nicknames, public inheritance, hierarchy
+- `tests/test_markdown_handler.py`: MarkdownHandler parsing, includes, wiki-links, save/list operations
+- `tests/test_content_index.py`: ContentIndex CRUD, queries, public/draft filtering, wiki-link resolution
+- `tests/test_date_manager.py`: DateManager date parsing, validation, auto-update
+- `tests/test_garden_features.py`: Integration tests for garden features (nicknames, public/draft, themes)
+
+### TrellisSources Tests
+```bash
+cd ../trellis-sources
+pytest tests/ -v
+```
+- `tests/test_publisher.py`: Source scanning, frontmatter processing, publish/check/update commands
+- `tests/test_cli.py`: CLI dispatch and argument handling
 
 ## Deployment
 

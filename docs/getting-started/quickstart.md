@@ -1,3 +1,15 @@
++++
+guid = "4012277b-de6f-4b42-a88b-56caa3848f36"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "quickstart"
+publish_path = "trellis/docs/getting-started"
+source_path = "/Users/almargolis/projects/published/trellis/docs/getting-started/quickstart.md"
++++
 # Quick Start
 
 Get your digital garden running in under 5 minutes.

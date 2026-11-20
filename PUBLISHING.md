@@ -1,3 +1,15 @@
++++
+guid = "3fcfa5b5-414c-4190-8136-7da912be53a9"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "publishing"
+publish_path = "trellis"
+source_path = "/Users/almargolis/projects/published/trellis/PUBLISHING.md"
++++
 # Publishing Checklist
 
 Steps to publish Trellis and its dependencies to PyPI.

@@ -50,6 +50,14 @@ body {
     text-decoration: none;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.site-logo {
+    height: 2rem;
+    width: auto;
 }
 
 .main-nav .logo:hover {

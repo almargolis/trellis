@@ -1,3 +1,15 @@
++++
+guid = "f852af48-b173-4798-8b6a-6faba50c8d08"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "structure"
+publish_path = "trellis/docs/content"
+source_path = "/Users/almargolis/projects/published/trellis/docs/content/structure.md"
++++
 # Content Structure
 
 How to organize content across multiple gardens and topics.

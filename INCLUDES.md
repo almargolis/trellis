@@ -1,3 +1,15 @@
++++
+guid = "9090480f-382b-4f39-822d-4ec3d61c35da"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "includes"
+publish_path = "trellis"
+source_path = "/Users/almargolis/projects/published/trellis/INCLUDES.md"
++++
 # Documentation Includes Guide
 
 MkDocs supports including shared documentation snippets using the `pymdownx.snippets` extension.

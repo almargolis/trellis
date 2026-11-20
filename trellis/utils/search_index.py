@@ -36,6 +36,8 @@ class SearchIndex:
             content=TEXT(analyzer=StemmingAnalyzer()),
             garden=STORED,
             status=STORED,
+            public_effective=STORED,
+            draft=STORED,
         )
         self._index = None
 
@@ -58,7 +60,8 @@ class SearchIndex:
         clean = re.sub(r'<[^>]+>', '', html_content)
         return clean
 
-    def add_document(self, url, source_file, title, description, content, garden=None, status=None):
+    def add_document(self, url, source_file, title, description, content,
+                     garden=None, status=None, public_effective=False, draft=True):
         """Add or update a document in the search index
 
         Args:
@@ -69,6 +72,8 @@ class SearchIndex:
             content: Full text content (HTML will be stripped)
             garden: Garden slug (optional)
             status: Article status (e.g. 'published', 'draft')
+            public_effective: Whether the page is effectively public
+            draft: Whether the page is a draft
         """
         try:
             ix = self._ensure_index()
@@ -85,6 +90,8 @@ class SearchIndex:
                 content=clean_content,
                 garden=garden or '',
                 status=status or 'published',
+                public_effective=bool(public_effective),
+                draft=bool(draft),
             )
             writer.commit()
         except Exception as e:
@@ -100,12 +107,13 @@ class SearchIndex:
         except Exception as e:
             print(f"Error removing document from search index: {e}")
 
-    def search(self, query_string, limit=20):
+    def search(self, query_string, limit=20, public_only=False):
         """Search the index
 
         Args:
             query_string: User's search query
             limit: Maximum results to return
+            public_only: If True, only return public non-draft results
 
         Returns:
             dict with 'results' list and 'error' message (if any)
@@ -137,11 +145,21 @@ class SearchIndex:
                                  f"Avoid special characters like quotes, parentheses, or brackets."
                     }
 
-                results = searcher.search(query, limit=limit)
+                # Fetch extra results when filtering to ensure we return enough
+                fetch_limit = limit * 3 if public_only else limit
+                results = searcher.search(query, limit=fetch_limit)
 
                 # Convert results to list of dicts
                 result_list = []
                 for hit in results:
+                    # Filter for visibility when public_only
+                    if public_only:
+                        is_public = hit.get('public_effective', False)
+                        is_draft = hit.get('draft', True)
+                        status = hit.get('status', 'published')
+                        if not is_public or is_draft or status == 'draft':
+                            continue
+
                     result_list.append({
                         'url': hit['url'],
                         'title': hit['title'] or 'Untitled',
@@ -150,6 +168,9 @@ class SearchIndex:
                         'status': hit['status'] if 'status' in hit else 'published',
                         'score': hit.score,
                     })
+
+                    if len(result_list) >= limit:
+                        break
 
                 return {'results': result_list, 'error': None}
 
@@ -194,35 +215,51 @@ class SearchIndex:
             handler = MarkdownHandler(content_path, self.data_dir)
             for item in handler.list_items():
                 if item.get('type') in ['markdown', 'page']:
+                    meta = item['metadata']
+                    file_public = meta.get('public')
+                    pub_effective = bool(file_public) if file_public is not None else False
+                    is_draft = meta.get('draft', True) or meta.get('status') == 'draft'
                     url = f"/page/{item['slug']}"
                     writer.add_document(
                         url=url,
                         source_file=item['filename'],
-                        title=item['metadata'].get('title', ''),
-                        description=item['metadata'].get('description', ''),
+                        title=meta.get('title', ''),
+                        description=meta.get('description', ''),
                         content=self._strip_html(item.get('content', '')),
                         garden='',
-                        status=item['metadata'].get('status', 'published'),
+                        status=meta.get('status', 'published'),
+                        public_effective=pub_effective,
+                        draft=bool(is_draft),
                     )
                     count += 1
 
             # Index each garden
             for garden in gardens:
-                garden_path = content_path / garden['slug']
+                garden_slug = garden['slug']
+                garden_path = content_path / garden_slug
                 handler = MarkdownHandler(garden_path, self.data_dir)
 
                 # Recursively get all articles
                 for article in handler.list_articles(recursive=True):
                     if article.get('type') in ['markdown', 'page']:
-                        url = f"/garden/{garden['slug']}/{article['slug']}"
+                        meta = article['metadata']
+                        file_public = meta.get('public')
+                        _, pub_effective = garden_manager.compute_effective_public(
+                            garden_slug, article['slug'],
+                            file_public=file_public,
+                        )
+                        is_draft = meta.get('draft', True) or meta.get('status') == 'draft'
+                        url = f"/garden/{garden_slug}/{article['slug']}"
                         writer.add_document(
                             url=url,
-                            source_file=f"{garden['slug']}/{article['filename']}",
-                            title=article['metadata'].get('title', ''),
-                            description=article['metadata'].get('description', ''),
+                            source_file=f"{garden_slug}/{article['filename']}",
+                            title=meta.get('title', ''),
+                            description=meta.get('description', ''),
                             content=self._strip_html(article.get('content', '')),
-                            garden=garden['slug'],
-                            status=article['metadata'].get('status', 'published'),
+                            garden=garden_slug,
+                            status=meta.get('status', 'published'),
+                            public_effective=pub_effective,
+                            draft=bool(is_draft),
                         )
                         count += 1
 

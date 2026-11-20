@@ -1,3 +1,15 @@
++++
+guid = "62742788-f0b0-4bb5-b9b4-108a45f74582"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "deployment"
+publish_path = "trellis/docs/reference"
+source_path = "/Users/almargolis/projects/published/trellis/docs/reference/deployment.md"
++++
 # Deployment
 
 Production deployment guide for Trellis CMS.

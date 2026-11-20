@@ -1,3 +1,15 @@
++++
+guid = "046e7e0b-28c3-425b-951f-18113959e804"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "architecture"
+publish_path = "trellis/docs/reference"
+source_path = "/Users/almargolis/projects/published/trellis/docs/reference/architecture.md"
++++
 # Architecture
 
 System architecture and design of Trellis CMS.
@@ -23,11 +35,11 @@ Trellis is a Flask-based digital garden CMS with a focus on simplicity, markdown
 │  │            Blueprints                        │  │
 │  │  • main_bp (public routes)                   │  │
 │  │  • editor_bp (content editing)               │  │
-│  │  • auth_bp (authentication)                  │  │
-│  │  • comments_bp (commenting)                  │  │
+│  │  • qdflaskauth (authentication, external)    │  │
 │  └──────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────┐  │
 │  │         Utility Modules                      │  │
+│  │  • frontmatter (parse/write/validate)        │  │
 │  │  • MarkdownHandler (content processing)      │  │
 │  │  • GardenManager (directory management)      │  │
 │  │  • SearchHandler (full-text search)          │  │
@@ -109,35 +121,13 @@ def create_app(config=None):
 - Frontmatter editing
 - Index updates
 
-### auth_bp (Authentication)
+### Authentication (qdflaskauth)
 
-**Purpose:** User management and authentication
-
-**Routes:**
-- `/auth/login` - Login page
-- `/auth/logout` - Logout
-- `/auth/change-password` - Change password
-- `/auth/users` - User management (admin only)
-- `/auth/users/add` - Add user (admin only)
-- `/auth/users/edit/<id>` - Edit user (admin only)
-
-**Key Features:**
+Authentication is delegated to the external `qdflaskauth` package:
 - Flask-Login integration
 - Role-based access (admin/editor)
 - Password hashing
 - Session management
-
-### comments_bp (Commenting)
-
-**Purpose:** User comments on articles
-
-**Provided by:** qdcomments package
-
-**Features:**
-- Comment posting and moderation
-- Spam filtering
-- Email notifications
-- Comment approval workflow
 
 ## Data Models
 
@@ -158,30 +148,31 @@ class User(UserMixin, db.Model):
 - **Admin:** Full access (users, settings, content)
 - **Editor:** Content editing only
 
-### Content Model (Metadata Cache)
+### Content Index (`trellis_content.db`)
 
 ```sql
--- trellis_content.db
-CREATE TABLE articles (
-    id INTEGER PRIMARY KEY,
-    title TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    garden_slug TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    content TEXT,
-    published_date TEXT,
+CREATE TABLE pages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    url TEXT UNIQUE NOT NULL,
+    source_file TEXT NOT NULL,
+    title TEXT,
+    description TEXT,
     created_date TEXT,
+    published_date TEXT,
     updated_date TEXT,
-    tags TEXT,
-    status TEXT,
-    UNIQUE(garden_slug, slug)
+    guid TEXT,
+    source_path TEXT,
+    public_specified INTEGER,     -- explicit public setting on this item
+    public_effective INTEGER DEFAULT 0,  -- computed public considering inheritance
+    draft INTEGER DEFAULT 1,
+    last_indexed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
 **Purpose:**
-- Fast lookups for wiki-link resolution
+- Fast lookups for wiki-link resolution (by title, slug, or GUID)
+- Public/draft filtering for reader-facing views
 - Metadata queries without file I/O
-- Search result metadata
 
 ## Content Processing Pipeline
 
@@ -393,27 +384,13 @@ CREATE TABLE articles (
 
 ### Content Index Schema
 
-```sql
-CREATE TABLE articles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    garden_slug TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    content TEXT,
-    published_date TEXT,
-    created_date TEXT,
-    updated_date TEXT,
-    tags TEXT,  -- JSON array
-    status TEXT DEFAULT 'published',
-    last_indexed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(garden_slug, slug)
-);
+See the `pages` table definition in the Data Models section above. Key indexes:
 
-CREATE INDEX idx_slug ON articles(slug);
-CREATE INDEX idx_garden ON articles(garden_slug);
-CREATE INDEX idx_status ON articles(status);
-CREATE INDEX idx_published ON articles(published_date);
+```sql
+CREATE INDEX idx_updated_date ON pages(updated_date DESC);
+CREATE INDEX idx_source_file ON pages(source_file);
+CREATE INDEX idx_title ON pages(title COLLATE NOCASE);
+CREATE INDEX idx_guid ON pages(guid);
 ```
 
 ## Search Architecture

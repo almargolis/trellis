@@ -1,3 +1,15 @@
++++
+guid = "afc4377e-824e-4322-969b-b3564027f9d6"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "backup-git-setup"
+publish_path = "trellis/docs/includes"
+source_path = "/Users/almargolis/projects/published/trellis/docs/includes/backup-git-setup.md"
++++
 ### Initialize Git Repository
 
 ```bash

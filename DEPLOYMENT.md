@@ -1,3 +1,15 @@
++++
+guid = "950451a7-1fa2-4ea7-895e-4dfcfeda329d"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "deployment"
+publish_path = "trellis"
+source_path = "/Users/almargolis/projects/published/trellis/DEPLOYMENT.md"
++++
 # Trellis - Production Deployment Guide
 
 This guide uses `<site-name>` as a placeholder for your site's directory name (e.g., `tmih`, `myblog`, etc.). A single server can host multiple Trellis installations for different sites.

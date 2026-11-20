@@ -1,3 +1,15 @@
++++
+guid = "6a44920c-68f8-4c90-afb9-1979b9885caa"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "page-directories"
+publish_path = "trellis/docs/content"
+source_path = "/Users/almargolis/projects/published/trellis/docs/content/page-directories.md"
++++
 # Page Directories
 
 Hierarchical content organization with nested pages and assets.

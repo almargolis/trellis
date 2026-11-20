@@ -1,3 +1,15 @@
++++
+guid = "4aa4b7a8-a23c-4145-a10d-cf2681040ccb"
+date-created = 2026-10-04
+date-modified = 2026-10-04
+sensitive = true
+publish = false
+draft = true
+date-published = ""
+slug = "updates"
+publish_path = "trellis/docs/maintenance"
+source_path = "/Users/almargolis/projects/published/trellis/docs/maintenance/updates.md"
++++
 # Updates
 
 Keeping Trellis CMS up to date.
