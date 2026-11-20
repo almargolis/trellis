@@ -107,11 +107,15 @@ content/
 ## Documentation
 
 - **[CLAUDE.md](CLAUDE.md)** - Developer guide and architecture overview
-- **[HIERARCHICAL_CONTENT.md](HIERARCHICAL_CONTENT.md)** - Detailed guide to hierarchical content structure
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide
+- **[INSTALLATION.md](INSTALLATION.md)** - Detailed installation instructions
+- **[FIRST_GARDEN.md](FIRST_GARDEN.md)** - Creating your first garden
+- **[WRITING.md](WRITING.md)** - Writing content and markdown guide
+- **[WIKI_LINKS.md](WIKI_LINKS.md)** - Wiki-link syntax and usage
+- **[HIERARCHICAL_CONTENT.md](HIERARCHICAL_CONTENT.md)** - Hierarchical content structure
+- **[INDEXING.md](INDEXING.md)** - Search and content index management
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment instructions
-- **[docs/reference/frontmatter.md](docs/reference/frontmatter.md)** - Frontmatter fields, formats, and auto-migration
-- **[docs/reference/architecture.md](docs/reference/architecture.md)** - System architecture
-- **[docs/reference/api.md](docs/reference/api.md)** - API reference
+- **[UPDATES.md](UPDATES.md)** - Version updates and maintenance
 
 ## Project Name
 
